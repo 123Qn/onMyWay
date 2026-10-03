@@ -33,4 +33,6 @@ You are the MANAGER. Do not write code yourself. For each request:
 - Reply to me in Vietnamese; keep code, comments and commit messages in English.
 - Never commit secrets. Supabase URL and anon key go in `.env` as `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`. Never use the Supabase service_role key in the app.
 - Ask me before installing large libraries or changing the project structure.
-- After each finished task, suggest a commit message but do not commit or push unless I ask.
+- After each finished step, if tester (and security when required) passed: commit with a conventional commit message, then push to origin main.
+- Before every commit, run `git status` and make sure `.env` or any secret is NOT staged. Never use `git add -A` blindly on files you did not create or change.
+- One commit per finished step. Never commit failing code, never force-push, never rewrite history.
