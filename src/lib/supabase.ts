@@ -2,8 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 import { AppState, Platform } from 'react-native';
 
-// TODO(step 2): pass the generated `Database` type: createClient<Database>(...)
-// once `supabase gen types typescript` output exists in src/types/database.ts.
+import type { Database } from '@/types/database';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -82,7 +81,7 @@ const secureStoreAdapter = {
 
 const isWeb = Platform.OS === 'web';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     // On web, fall back to supabase's default (localStorage).
     ...(isWeb ? {} : { storage: secureStoreAdapter }),

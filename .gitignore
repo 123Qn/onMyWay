@@ -43,3 +43,7 @@ example
 /android
 
 .env
+
+# Supabase CLI
+supabase/.temp
+supabase/.branches
