@@ -5,7 +5,7 @@ import MapView, { Marker, Polyline, type Region } from 'react-native-maps';
 import type { TripMapHandle, TripMapProps, TripMapStop } from './trip-map.types';
 
 import { mapStyleDark } from '@/constants/map-style-dark';
-import { Radius } from '@/constants/theme';
+import { FontFamily, Radius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -222,5 +222,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
   },
-  markerText: { fontSize: 14, fontWeight: '700' },
+  markerText: { fontSize: 14, fontFamily: FontFamily.bold },
 });

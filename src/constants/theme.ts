@@ -118,8 +118,8 @@ export const Fonts = Platform.select({
 });
 
 /**
- * Font family names (Plus Jakarta Sans). Names only for now: the fonts are loaded in the
- * fonts step, so nothing references these yet.
+ * Font family names (Plus Jakarta Sans). Loaded at runtime in the root layout; weight is
+ * chosen only through the family.
  */
 export const FontFamily = {
   regular: 'PlusJakartaSans_400Regular',
@@ -164,21 +164,21 @@ export const TabBar = {
 
 export const Duration = { fast: 150, normal: 250, slow: 400, pulse: 900 } as const;
 
-// fontWeight stays until the fonts step swaps it for FontFamily.
+// Weight is chosen only through fontFamily; never combine with fontWeight.
 export const Typography = {
-  display: { fontSize: 34, lineHeight: 42, letterSpacing: -0.4, fontWeight: '700' },
-  title: { fontSize: 28, lineHeight: 34, letterSpacing: -0.3, fontWeight: '700' },
-  heading: { fontSize: 22, lineHeight: 28, letterSpacing: -0.2, fontWeight: '700' },
-  subheading: { fontSize: 18, lineHeight: 24, letterSpacing: 0, fontWeight: '600' },
-  body: { fontSize: 16, lineHeight: 24, letterSpacing: 0, fontWeight: '400' },
-  bodyStrong: { fontSize: 16, lineHeight: 24, letterSpacing: 0, fontWeight: '600' },
-  label: { fontSize: 14, lineHeight: 20, letterSpacing: 0, fontWeight: '600' },
-  caption: { fontSize: 12, lineHeight: 16, letterSpacing: 0.1, fontWeight: '500' },
+  display: { fontSize: 34, lineHeight: 42, letterSpacing: -0.4, fontFamily: FontFamily.bold },
+  title: { fontSize: 28, lineHeight: 34, letterSpacing: -0.3, fontFamily: FontFamily.bold },
+  heading: { fontSize: 22, lineHeight: 28, letterSpacing: -0.2, fontFamily: FontFamily.bold },
+  subheading: { fontSize: 18, lineHeight: 24, letterSpacing: 0, fontFamily: FontFamily.semibold },
+  body: { fontSize: 16, lineHeight: 24, letterSpacing: 0, fontFamily: FontFamily.regular },
+  bodyStrong: { fontSize: 16, lineHeight: 24, letterSpacing: 0, fontFamily: FontFamily.semibold },
+  label: { fontSize: 14, lineHeight: 20, letterSpacing: 0, fontFamily: FontFamily.semibold },
+  caption: { fontSize: 12, lineHeight: 16, letterSpacing: 0.1, fontFamily: FontFamily.medium },
   statValue: {
     fontSize: 22,
     lineHeight: 28,
     letterSpacing: -0.2,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     fontVariant: ['tabular-nums'],
   },
 } as const;

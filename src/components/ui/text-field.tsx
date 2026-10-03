@@ -14,7 +14,7 @@ import { Icon } from './icon';
 import { IconButton } from './icon-button';
 
 import { ThemedText } from '@/components/themed-text';
-import { Layout, Radius, Spacing, Typography } from '@/constants/theme';
+import { FontFamily, Layout, Radius, Spacing, Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type TextFieldProps = Omit<TextInputProps, 'style' | 'value' | 'onChangeText'> & {
@@ -167,7 +167,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
 
 const styles = StyleSheet.create({
   container: { gap: Spacing.one },
-  label: { fontWeight: '600' },
+  label: { fontFamily: FontFamily.semibold },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     fontSize: Typography.body.fontSize,
     lineHeight: Typography.body.lineHeight,
-    fontWeight: Typography.body.fontWeight,
+    fontFamily: Typography.body.fontFamily,
   },
   multiline: { minHeight: 96, textAlignVertical: 'top' },
   toggle: { marginRight: Spacing.one },

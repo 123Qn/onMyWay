@@ -1,3 +1,8 @@
+import { PlusJakartaSans_400Regular } from '@expo-google-fonts/plus-jakarta-sans/400Regular';
+import { PlusJakartaSans_500Medium } from '@expo-google-fonts/plus-jakarta-sans/500Medium';
+import { PlusJakartaSans_600SemiBold } from '@expo-google-fonts/plus-jakarta-sans/600SemiBold';
+import { PlusJakartaSans_700Bold } from '@expo-google-fonts/plus-jakarta-sans/700Bold';
+import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
@@ -12,14 +17,15 @@ import { SessionProvider, needsUsername, useSession } from '@/providers/session-
 
 SplashScreen.preventAutoHideAsync();
 
-function RootStack() {
+function RootStack({ fontsReady }: { fontsReady: boolean }) {
   const { session, profile, isLoading, profileError } = useSession();
 
   useEffect(() => {
-    if (!isLoading) SplashScreen.hideAsync();
-  }, [isLoading]);
+    if (!isLoading && fontsReady) SplashScreen.hideAsync();
+  }, [isLoading, fontsReady]);
 
-  if (isLoading) return null;
+  // The splash stays visible until the session and the fonts are both settled.
+  if (isLoading || !fontsReady) return null;
 
   if (session && profileError) {
     return (
@@ -55,6 +61,18 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const theme = useTheme();
 
+  // Only the four weights in use are bundled. On error the app continues with system fonts.
+  const [fontsLoaded, fontError] = useFonts({
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+  });
+
+  useEffect(() => {
+    if (fontError && __DEV__) console.warn('Font loading failed, using system fonts.', fontError);
+  }, [fontError]);
+
   // Navigation theme built from tokens so transitions never flash white/black.
   const navigationTheme = useMemo(() => {
     const base = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
@@ -79,7 +97,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={navigationTheme}>
         <SessionProvider>
-          <RootStack />
+          <RootStack fontsReady={fontsLoaded || !!fontError} />
         </SessionProvider>
       </ThemeProvider>
     </GestureHandlerRootView>

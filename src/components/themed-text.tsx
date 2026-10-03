@@ -1,6 +1,6 @@
-import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
+import { StyleSheet, Text, type TextProps } from 'react-native';
 
-import { Fonts, ThemeColor, Typography } from '@/constants/theme';
+import { FontFamily, Fonts, ThemeColor, Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
@@ -51,13 +51,12 @@ const typeStyles = StyleSheet.create({
   default: Typography.body,
   title: Typography.title,
   subtitle: Typography.heading,
-  small: { ...Typography.label, fontWeight: '500' },
-  smallBold: { ...Typography.label, fontWeight: '700' },
-  link: { fontSize: 14, lineHeight: 20, fontWeight: '600' },
-  linkPrimary: { fontSize: 14, lineHeight: 20, fontWeight: '600' },
+  small: { ...Typography.label, fontFamily: FontFamily.medium },
+  smallBold: { ...Typography.label, fontFamily: FontFamily.bold },
+  link: { fontSize: 14, lineHeight: 20, fontFamily: FontFamily.semibold },
+  linkPrimary: { fontSize: 14, lineHeight: 20, fontFamily: FontFamily.semibold },
   code: {
     fontFamily: Fonts.mono,
-    fontWeight: Platform.select({ android: '700' }) ?? '500',
     fontSize: 12,
     lineHeight: 16,
   },

@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Spacing } from '@/constants/theme';
+import { FontFamily, Spacing } from '@/constants/theme';
 
 export type ProfileHeaderProps = {
   displayName: string;
@@ -59,6 +59,6 @@ const styles = StyleSheet.create({
   container: { alignItems: 'center', gap: Spacing.two, padding: Spacing.three },
   center: { textAlign: 'center' },
   bio: { maxWidth: 480 },
-  stat: { fontWeight: '600' },
+  stat: { fontFamily: FontFamily.semibold },
   actions: { flexDirection: 'row', gap: Spacing.two, alignSelf: 'stretch' },
 });

@@ -4,7 +4,7 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
-import { Layout, Radius, Spacing } from '@/constants/theme';
+import { FontFamily, Layout, Radius, Spacing } from '@/constants/theme';
 import type { PlaceSearchStatus } from '@/hooks/use-place-search';
 import { useTheme } from '@/hooks/use-theme';
 import type { PlaceResult } from '@/lib/nominatim';
@@ -142,5 +142,5 @@ const styles = StyleSheet.create({
     minHeight: 56,
   },
   rowText: { flex: 1 },
-  name: { fontWeight: '600' },
+  name: { fontFamily: FontFamily.semibold },
 });

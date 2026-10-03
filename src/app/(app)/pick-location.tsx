@@ -27,7 +27,7 @@ import { ErrorBanner } from '@/components/ui/error-banner';
 import { Icon } from '@/components/ui/icon';
 import { IconButton } from '@/components/ui/icon-button';
 import { Screen } from '@/components/ui/screen';
-import { Layout, Radius, Spacing, shadow } from '@/constants/theme';
+import { FontFamily, Layout, Radius, Spacing, shadow } from '@/constants/theme';
 import { usePlaceSearch } from '@/hooks/use-place-search';
 import { useTheme } from '@/hooks/use-theme';
 import { reversePlace, type PlaceResult } from '@/lib/nominatim';
@@ -528,6 +528,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: Layout.controlHeight.md,
     fontSize: 16,
+    fontFamily: FontFamily.regular,
     paddingVertical: Spacing.two,
   },
   results: {

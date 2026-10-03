@@ -6,7 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
 import { Icon } from '@/components/ui/icon';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Layout, Radius, Spacing } from '@/constants/theme';
+import { FontFamily, Layout, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDateLong, formatRelativeLong, formatRelativeShort } from '@/lib/format-date';
 
@@ -245,7 +245,7 @@ export function TripCardSkeleton({
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  bold: { fontWeight: '600' },
+  bold: { fontFamily: FontFamily.semibold },
   card: { borderRadius: Radius.lg, overflow: 'hidden' },
   authorRow: {
     flexDirection: 'row',

@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
-import { Layout, Radius, Spacing } from '@/constants/theme';
+import { FontFamily, Layout, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Visibility } from '@/lib/trip-form';
 
@@ -68,7 +68,7 @@ export function VisibilityPicker({ value, disabled, onChange }: VisibilityPicker
 
 const styles = StyleSheet.create({
   group: { gap: Spacing.two },
-  label: { fontWeight: '600' },
+  label: { fontFamily: FontFamily.semibold },
   options: { gap: Spacing.two },
   row: {
     flexDirection: 'row',

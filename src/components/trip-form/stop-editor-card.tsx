@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { IconButton } from '@/components/ui/icon-button';
 import { TextField } from '@/components/ui/text-field';
-import { Radius, Spacing } from '@/constants/theme';
+import { FontFamily, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
   MAX_PHOTOS_PER_STOP,
@@ -208,5 +208,5 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   photos: { gap: Spacing.one },
   photosHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  photosLabel: { fontWeight: '600' },
+  photosLabel: { fontFamily: FontFamily.semibold },
 });

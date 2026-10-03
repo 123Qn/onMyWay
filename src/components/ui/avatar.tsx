@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Layout, Radius } from '@/constants/theme';
+import { FontFamily, Layout, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type AvatarSize = 'sm' | 'md' | 'lg' | 'xl' | number;
@@ -89,5 +89,5 @@ export function Avatar({
 
 const styles = StyleSheet.create({
   circle: { overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
-  initials: { fontWeight: '700' },
+  initials: { fontFamily: FontFamily.bold },
 });

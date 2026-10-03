@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
-import { Radius, Spacing } from '@/constants/theme';
+import { FontFamily, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type CoverPickerProps = {
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   empty: { alignItems: 'center', gap: Spacing.one },
-  label: { fontWeight: '600' },
+  label: { fontFamily: FontFamily.semibold },
   spinner: { alignItems: 'center', justifyContent: 'center' },
   actions: { flexDirection: 'row', gap: Spacing.two },
 });
