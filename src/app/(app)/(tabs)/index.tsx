@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Icon } from '@/components/ui/icon';
-import { IconButton } from '@/components/ui/icon-button';
 import { Screen } from '@/components/ui/screen';
 import { SkeletonGroup } from '@/components/ui/skeleton';
 import { Layout, Spacing } from '@/constants/theme';
@@ -77,12 +76,6 @@ export default function FeedScreen() {
         <ThemedText type="title" accessibilityRole="header">
           Feed
         </ThemedText>
-        <IconButton
-          icon="plus"
-          variant="filled"
-          accessibilityLabel="Create trip"
-          onPress={() => router.push('/trip/new')}
-        />
       </View>
       <FlatList
         data={feed.items}
@@ -128,7 +121,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     padding: Spacing.three,
   },
   content: { flexGrow: 1, padding: Spacing.three, paddingTop: 0 },

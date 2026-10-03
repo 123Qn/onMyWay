@@ -6,6 +6,7 @@ import {
   TabTriggerSlotProps,
   TabListProps,
 } from 'expo-router/ui';
+import { router } from 'expo-router';
 import { Pressable, View, StyleSheet } from 'react-native';
 
 import { ThemedText } from './themed-text';
@@ -55,6 +56,17 @@ export function CustomTabList(props: TabListProps) {
 
         {props.children}
 
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Create trip"
+          onPress={() => router.push('/trip/new')}
+          style={({ pressed }) => pressed && styles.pressed}>
+          <ThemedView type="primarySoft" style={styles.tabButtonView}>
+            <ThemedText type="small" themeColor="primaryPressed">
+              Create trip
+            </ThemedText>
+          </ThemedView>
+        </Pressable>
       </ThemedView>
     </View>
   );
