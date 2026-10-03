@@ -30,15 +30,15 @@ export type Feed = {
   retryCover: (path: string) => void;
 };
 
-/** Both cursor params are always sent together (a row comparison with only one is empty). */
+type FeedArgs = Database['public']['Functions']['get_feed']['Args'];
+
+/** Both cursor params are sent together (a row comparison with only one is empty). */
 async function fetchPage(cursor: FeedRow | null): Promise<FeedRow[] | null> {
+  const args: FeedArgs = cursor
+    ? { p_before_created_at: cursor.created_at, p_before_id: cursor.trip_id, p_limit: PAGE_SIZE }
+    : { p_limit: PAGE_SIZE };
   try {
-    const { data, error } = await supabase.rpc('get_feed', {
-      // The generated type does not allow null, but the SQL function accepts it for page one.
-      p_before_created_at: (cursor?.created_at ?? null) as unknown as string,
-      p_before_id: (cursor?.trip_id ?? null) as unknown as string,
-      p_limit: PAGE_SIZE,
-    });
+    const { data, error } = await supabase.rpc('get_feed', args);
     return error ? null : data;
   } catch {
     return null;
