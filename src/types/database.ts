@@ -188,6 +188,14 @@ export type Database = {
           username: string
         }[]
       }
+      get_profile_stats: {
+        Args: { p_user_id: string }
+        Returns: {
+          photo_count: number
+          stop_count: number
+          trip_count: number
+        }[]
+      }
       reorder_stop_photos: {
         Args: { p_ids: string[]; p_stop_id: string }
         Returns: undefined
