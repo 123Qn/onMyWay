@@ -5,12 +5,15 @@ import {
   ProfileHeader,
   ProfileHeaderSkeleton,
 } from '@/components/profile/profile-header';
+import { profileStatItems } from '@/components/profile/stats-row';
 import { ProfileTripList } from '@/components/profile/profile-trip-list';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Screen } from '@/components/ui/screen';
 import { SkeletonGroup } from '@/components/ui/skeleton';
+import { useProfileStats } from '@/hooks/use-profile-stats';
 import { useProfileTrips } from '@/hooks/use-profile-trips';
+import { firstCover } from '@/lib/profile-cover';
 import { getAvatarUrl } from '@/lib/avatar-url';
 import { supabase } from '@/lib/supabase';
 import { useSession } from '@/providers/session-provider';
@@ -68,6 +71,8 @@ export default function UserProfileScreen() {
   const shown = state.status === 'ready' ? state.profile : null;
   const trips = useProfileTrips({ ownerId: shown?.id ?? null, publicOnly: true });
 
+  const stats = useProfileStats(shown?.id ?? null);
+
   const title = `@${username}`;
 
   if (isMe) return <Stack.Screen options={{ title }} />;
@@ -110,12 +115,15 @@ export default function UserProfileScreen() {
               username={state.profile.username}
               avatarUrl={getAvatarUrl(state.profile.avatar_path)}
               bio={state.profile.bio}
-              tripCount={trips.count}
+              cover={firstCover(trips)}
+              onCoverError={trips.retryCover}
+              stats={profileStatItems(stats.stats, stats.error)}
             />
           }
           loadError="Could not load this profile."
           refreshError="Could not load this profile."
           onPressTrip={(id) => router.push(`/trip/${id}`)}
+          onRefresh={stats.refetch}
           empty={
             <EmptyState
               icon="map"
