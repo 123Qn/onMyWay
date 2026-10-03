@@ -17,7 +17,8 @@ export type IconName =
   | 'home'
   | 'person'
   | 'lock'
-  | 'image';
+  | 'image'
+  | 'check';
 
 type SymbolName = Exclude<ComponentProps<typeof SymbolView>['name'], string>;
 
@@ -35,6 +36,7 @@ const ICONS: Record<IconName, Required<SymbolName>> = {
   person: { ios: 'person', android: 'person', web: 'person' },
   lock: { ios: 'lock', android: 'lock', web: 'lock' },
   image: { ios: 'photo', android: 'image', web: 'image' },
+  check: { ios: 'checkmark', android: 'check', web: 'check' },
 };
 
 export type IconProps = {

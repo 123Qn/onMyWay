@@ -1,5 +1,6 @@
 import { forwardRef, useCallback, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   TextInput,
@@ -23,6 +24,10 @@ export type TextFieldProps = Omit<TextInputProps, 'style' | 'value' | 'onChangeT
   error?: string | null;
   helperText?: string;
   showCounter?: boolean;
+  /** Colour of the helper text; 'success' also shows a check icon. */
+  helperTone?: 'muted' | 'success';
+  /** Shows a small spinner before the helper text (e.g. while checking availability). */
+  helperLoading?: boolean;
   containerStyle?: StyleProp<ViewStyle>;
 };
 
@@ -36,6 +41,8 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
     secureTextEntry = false,
     maxLength,
     showCounter = false,
+    helperTone = 'muted',
+    helperLoading = false,
     multiline = false,
     editable = true,
     containerStyle,
@@ -132,9 +139,18 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
               </ThemedText>
             </View>
           ) : helperText ? (
-            <ThemedText type="caption" themeColor="textMuted" style={styles.flex}>
-              {helperText}
-            </ThemedText>
+            <View style={styles.helperRow} accessibilityLiveRegion="polite">
+              {helperLoading ? <ActivityIndicator size="small" color={theme.textMuted} /> : null}
+              {helperTone === 'success' ? (
+                <Icon name="check" size={Layout.iconSize.sm} color="success" />
+              ) : null}
+              <ThemedText
+                type="caption"
+                themeColor={helperTone === 'success' ? 'success' : 'textMuted'}
+                style={styles.flex}>
+                {helperText}
+              </ThemedText>
+            </View>
           ) : (
             <View style={styles.flex} />
           )}
@@ -169,6 +185,7 @@ const styles = StyleSheet.create({
   toggle: { marginRight: Spacing.one },
   disabled: { opacity: 0.5 },
   bottomRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
+  helperRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   errorRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   flex: { flex: 1 },
 });

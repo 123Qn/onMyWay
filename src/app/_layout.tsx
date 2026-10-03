@@ -5,12 +5,13 @@ import { useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import { SessionProvider, useSession } from '@/providers/session-provider';
+import { ProfileLoadError } from '@/components/profile-load-error';
+import { SessionProvider, needsUsername, useSession } from '@/providers/session-provider';
 
 SplashScreen.preventAutoHideAsync();
 
 function RootStack() {
-  const { session, isLoading } = useSession();
+  const { session, profile, isLoading, profileError } = useSession();
 
   useEffect(() => {
     if (!isLoading) SplashScreen.hideAsync();
@@ -18,15 +19,30 @@ function RootStack() {
 
   if (isLoading) return null;
 
+  if (session && profileError) {
+    return (
+      <>
+        <AnimatedSplashOverlay />
+        <ProfileLoadError />
+      </>
+    );
+  }
+
+  const ready = !!session && !!profile;
+  const onboarding = ready && needsUsername(profile);
+
   return (
     <>
       <AnimatedSplashOverlay />
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Protected guard={!!session}>
-          <Stack.Screen name="(app)" />
-        </Stack.Protected>
         <Stack.Protected guard={!session}>
           <Stack.Screen name="(auth)" />
+        </Stack.Protected>
+        <Stack.Protected guard={onboarding}>
+          <Stack.Screen name="(onboarding)" />
+        </Stack.Protected>
+        <Stack.Protected guard={ready && !onboarding}>
+          <Stack.Screen name="(app)" />
         </Stack.Protected>
       </Stack>
     </>

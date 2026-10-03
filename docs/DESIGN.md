@@ -369,3 +369,120 @@ Quality checks for the tester:
 - Reduce Motion on: skeleton static.
 - Keyboard: no field hidden on small phones; `Return` chains email -> password -> submit.
 - Safe areas: nothing under notch/home indicator; tab screens clear the bar.
+
+---
+
+## 6. Step 5 - Auth screens
+
+Supersedes section 5 where it mentions a username field on sign-up (removed). All screens use `Screen` (scroll, `padded="auth"`, `centered`), `TextField`, `Button`, `ErrorBanner`. Form layout: title -> optional subtitle -> `ErrorBanner` (only when set) -> fields -> primary `Button fullWidth` -> link. Vertical gap `Spacing.three` (Screen provides it).
+
+### 6.1 Route guard and flow
+
+Three mutually exclusive states in the root layout (`Stack.Protected`): no session -> `(auth)`; session and username matches `/^user_[0-9a-f]{12}$/` -> `(onboarding)`; session and real username -> `(app)`. Keep the splash visible until both session AND profile have loaded. If the profile fetch fails, do not let the user into `(app)`: show a full-screen `EmptyState icon="alert"`-style screen with `ErrorBanner message="Could not load your profile." onRetry` and a "Sign out" ghost button.
+After a successful username save the session provider must refetch the profile so the guard flips and the user lands on Feed with no manual navigation.
+
+### 6.2 Validation and error principles (all forms)
+
+- Validate on submit first. After the first submit attempt, re-validate live as the user types and show inline errors. Before that, validate a field on blur only if it is non-empty. Focus the first invalid field after a failed submit.
+- Field-specific problems -> inline `TextField error`. Problems about the request as a whole (credentials, network, rate limit, unknown) -> `ErrorBanner` above the form. Clear the banner when the user edits any field or resubmits.
+- Trim and lowercase email before sending. Never trim passwords.
+- While submitting: button `loading`, all fields `editable={false}`, ignore repeated submits.
+- Map Supabase auth errors by `error.code` (not by message text); fall back to the generic copy. Network = `AuthRetryableFetchError`, `status === 0`, or a thrown fetch failure.
+- Never log or display passwords. Sign-in uses one generic message for wrong email or password (no account enumeration).
+
+### 6.3 Sign in (`(auth)/sign-in`)
+
+| Field | Props | Validation |
+|---|---|---|
+| Email | `keyboardType="email-address"`, `autoCapitalize="none"`, `autoCorrect={false}`, `autoComplete="email"`, `textContentType="emailAddress"`, `returnKeyType="next"` | non-empty; format `/^[^\s@]+@[^\s@]+\.[^\s@]+$/` |
+| Password | `secureTextEntry`, `autoComplete="current-password"`, `textContentType="password"`, `returnKeyType="go"`, `onSubmitEditing` submits | non-empty only (no length rule) |
+
+Keyboard flow: email Next -> password Go = submit. Button "Sign in" `fullWidth`, `loading` while submitting. Below: "New here?" muted text + `Link` "Create an account" (>= 44 px tall, as today).
+
+| Case | Where | Copy |
+|---|---|---|
+| Empty email | inline | "Enter your email address." |
+| Bad email format | inline | "Enter a valid email address." |
+| Empty password | inline | "Enter your password." |
+| `invalid_credentials` | banner | "Incorrect email or password." |
+| `email_not_confirmed` | banner | "Please confirm your email before signing in." |
+| Rate limit (`over_request_rate_limit`, HTTP 429) | banner | "Too many attempts. Please wait a minute and try again." |
+| Network | banner + Retry (`onRetry` resubmits) | "No connection. Check your internet and try again." |
+| Anything else | banner | "Something went wrong. Please try again." |
+
+### 6.4 Sign up (`(auth)/sign-up`)
+
+Fields in order: Email, Password, Display name. No username field.
+
+| Field | Props | Validation / copy |
+|---|---|---|
+| Email | same as sign-in, `returnKeyType="next"` | same messages as sign-in |
+| Password | `secureTextEntry`, `autoComplete="new-password"`, `textContentType="newPassword"`, `returnKeyType="next"`, `helperText="At least 8 characters."` | length >= 8. Error: "Password must be at least 8 characters." (replaces helper while invalid) |
+| Display name | `maxLength={50}`, `showCounter`, `autoCapitalize="words"`, `autoComplete="name"`, `textContentType="name"`, `returnKeyType="go"`, submits | trimmed length 1-50. Error: "Enter your name." |
+
+Title "Create your account"; subtitle (`textMuted`) "Share your trips with fellow travellers." Button "Create account". Link row: "Already have an account?" + `Link` "Sign in".
+
+| Case | Where | Copy |
+|---|---|---|
+| `user_already_exists` / `email_exists` | inline on Email | "An account with this email already exists." (MVP accepts the enumeration trade-off) |
+| `weak_password` | inline on Password | "That password is too easy to guess. Try a longer or more unusual one." |
+| Rate limit | banner | "Too many attempts. Please wait a minute and try again." |
+| Network | banner + Retry | "No connection. Check your internet and try again." |
+| Anything else | banner | "Something went wrong. Please try again." |
+
+On success (session returned) do nothing manually: the guard routes to Choose username. Pass the trimmed display name as `options.data.display_name` (the DB trigger reads it, cap 50). If no session comes back (confirmation turned on later), show a success state "Check your email to confirm your account." with a "Back to sign in" button.
+
+### 6.5 Choose username (`(onboarding)/choose-username`)
+
+Purpose: replace the generated `user_xxxxxxxxxxxx`. Layout: `Screen scroll padded="auth" centered`, no header, no back control. Stack options for this screen: `headerShown: false`, `gestureEnabled: false`; because the guard makes `(auth)` unreachable, Android hardware back exits the app instead of returning to sign-up.
+
+- Title (`title`, header role): "Choose your username"
+- Explainer (`textMuted`): "This is how other travellers will find you. You can change it later in your profile."
+- Field: label "Username", `value` lowercased, `maxLength={30}`, `autoCapitalize="none"`, `autoCorrect={false}`, `spellCheck={false}`, `autoComplete="username-new"`, `textContentType="username"`, `keyboardType="ascii-capable"` (iOS) / default on Android, `returnKeyType="done"` (submits if Save is enabled), `showCounter`.
+- Input behaviour: in `onChangeText` apply `text.toLowerCase().replace(/\s/g, '')` so capitals and spaces never appear. Do NOT silently strip other characters; flag them via validation so the user understands why.
+- Prefill: YES. Suggest a slug of the display name from the profile: lowercase, strip diacritics (`normalize('NFD')` + remove combining marks), replace runs of non `[a-z0-9]` with `_`, trim leading/trailing `_`, cut to 30. Use it only if the result is >= 3 chars and does not start with `user_`; otherwise leave empty. The field starts focused with the text selected so typing replaces it. The suggestion goes through the same validation and availability check as typed text; it is never saved without the user pressing Save.
+- Save button: "Save and continue", `fullWidth`, disabled until status is `available` (or `check-failed`, see below), `loading` while saving.
+- Escape: `Button variant="ghost"` "Sign out" below Save (no confirmation; nothing is lost). Disabled while saving. Signing out flips the guard to sign-in.
+
+Validation order (first failing rule wins):
+1. Empty: no message, status `idle` (helper shown).
+2. Not matching `^[a-z0-9_]{3,30}$`: status `invalid`.
+   - length < 3: "Use at least 3 characters."
+   - disallowed characters: "Use only letters, numbers and underscores."
+3. Starts with `user_`: status `invalid`, "Usernames can't start with \"user_\"."
+4. Otherwise: debounce 400 ms after the last keystroke, then check availability.
+
+Status display (below the field via `helperText` / `error`; add an optional `helperTone?: 'muted' | 'success'` prop to `TextField` so success text can use the `success` token, and add a `check` entry (`checkmark` / `check`) to `IconName`):
+
+| Status | When | Copy | Visual |
+|---|---|---|---|
+| `idle` | empty | "3-30 characters: letters, numbers and underscores." | muted helper |
+| `invalid` | rules 2-3 | messages above | inline error (danger + alert icon) |
+| `checking` | request in flight | "Checking availability..." | muted helper, small `ActivityIndicator` |
+| `available` | no row found | "@name is available." | success tone + check icon |
+| `taken` | row found, or save hit 23505 | "@name is already taken. Try another." | inline error |
+| `check-failed` | availability query errored | "Couldn't check availability. You can still try to save." | muted helper; Save stays enabled |
+
+Availability query: `profiles` select `id` where `username = value`, `.maybeSingle()`. Ignore stale responses (track a request counter or the last queried value) and cancel the debounce on unmount. Treat the query as a hint only; the DB unique constraint is the source of truth.
+
+Save: update `profiles` set `username` where `id = auth uid`.
+- Success: refetch profile, guard routes to Feed.
+- Error `23505`: set status `taken`, message "@name was just taken. Try another.", keep the text, refocus and select the field. Do not show a banner.
+- Network or other error: `ErrorBanner` "Could not save your username. Please try again." with Retry (network: "No connection. Check your internet and try again.").
+- Client-side validity is re-checked at Save time; never send a value that fails the regex or starts with `user_`.
+
+Accessibility: the status line is a live region (`accessibilityLiveRegion="polite"`); announce "Checking availability", "Available", "Taken" through it, not by colour alone (icon + text always). Do not announce on every keystroke: only status changes.
+
+### 6.6 Profile placeholder - Sign out
+
+- Button: `variant="secondary"`, title "Sign out", `fullWidth`.
+- Decision: NO confirmation dialog for MVP. Sign-out is cheap to undo (sign in again) and drafts are stored locally and survive (note for step 10: do NOT clear local drafts on sign-out unless keyed per user).
+- Loading: button `loading` while `supabase.auth.signOut()` runs; the guard then navigates to sign-in. Disable while loading to prevent double taps.
+- Failure (rare, network): `ErrorBanner` "Could not sign out. Please try again." with Retry. On a network failure also clear the local session (`signOut({ scope: 'local' })`) so the user is not stuck, then the guard redirects.
+- Show the real display name and `@username` from the profile when available; keep the `Avatar` initials fallback.
+
+### 6.7 Copy reference (single source)
+
+Titles: "Sign in", "Create your account", "Choose your username". Buttons: "Sign in", "Create account", "Save and continue", "Sign out", "Retry". Links: "Create an account", "Sign in". Generic errors: "Something went wrong. Please try again." / "No connection. Check your internet and try again." / "Too many attempts. Please wait a minute and try again." All other strings are listed in the tables above and must be used verbatim.
+
+Tester checks: wrong password shows the banner (not an inline error); Return chains all fields; sign-up with a taken email shows the inline error; username input cannot show capitals or spaces; typing quickly sends one availability request after 400 ms; Save is disabled for `invalid`/`checking`/`taken`; two accounts racing for one name produce the 23505 message; there is no way back to sign-up from Choose username; Sign out works from both Choose username and Profile; VoiceOver/TalkBack announce status changes once.

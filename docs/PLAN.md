@@ -56,7 +56,7 @@ Note: `react-native-maps` means Expo Go is no longer enough — we need a develo
 
 ### Points where design and DB were reconciled
 
-- **Username at sign-up:** the DB trigger creates the profile with a generated username (`user_xxxxxxxxxxxx`) and never trusts client metadata. Right after sign-up the app updates the profile with the chosen username; if it is taken (error `23505`), the user is asked to pick another before entering the app.
+- **Username at sign-up:** the DB trigger creates the profile with a generated username (`user_xxxxxxxxxxxx`) and never trusts client metadata. **Owner decision (step 5):** the sign-up form has no username field. While the username is still the generated one, the route guard sends the signed-in user to an onboarding "Choose username" screen (availability check is possible there because the user is authenticated; `23505` = taken). User-chosen usernames may not start with `user_`.
 - **Trip visibility default:** DB default is `private` (safe default); the create form preselects `Public` explicitly.
 - **Bio length:** designer proposed 160 chars, DB 300. Proposal: **160 in both** (DB CHECK updated before migration).
 - **Feed page size:** 20 per page (DB caps at 50).
@@ -79,6 +79,9 @@ src/app/
     _layout.tsx                Stack, headerShown false
     sign-in.tsx
     sign-up.tsx
+  (onboarding)/
+    _layout.tsx                Stack, no header, no back gesture
+    choose-username.tsx        Pick a username after sign-up
   (app)/
     _layout.tsx                Stack (holds tabs + pushed screens)
     (tabs)/
@@ -97,9 +100,9 @@ src/app/
 ```
 
 **Auth gating** (root `_layout.tsx`):
-- `SessionProvider` wraps Supabase `getSession()` + `onAuthStateChange`, exposes `{ session, isLoading }`.
-- Splash stays visible while `isLoading`.
-- `Stack.Protected guard={!!session}` around `(app)`, `Stack.Protected guard={!session}` around `(auth)`. Sign in/out flips the guard; Expo Router redirects automatically.
+- `SessionProvider` wraps Supabase `getSession()` + `onAuthStateChange` and loads the signed-in user's profile; exposes `{ session, profile, isLoading, refreshProfile }`.
+- Splash stays visible while `isLoading` (session and first profile fetch).
+- Three `Stack.Protected` guards: `(auth)` when signed out; `(onboarding)` when signed in with a generated `user_…` username; `(app)` when signed in with a chosen username. Sign in/out or saving a username flips the guard; Expo Router redirects automatically. Profile fetch failure → retry screen with Sign out.
 - Login wall: nothing except `(auth)` is reachable without a session. Signed-out deep link to `trip/[id]` → sign-in → feed (deep-link resume later).
 - Session stored with `expo-secure-store` via a custom Supabase storage adapter (security review required).
 
@@ -117,7 +120,8 @@ Create trip is not a tab (NativeTabs can't host a custom centre button). Entry p
 | Screen | Route | Key UI | Primary actions | Empty / loading / error |
 |---|---|---|---|---|
 | Sign in | `(auth)/sign-in` | Logo, email, password (show/hide), link to sign-up | Sign in | Inline field errors, "Invalid credentials" banner, spinner + disabled button while submitting |
-| Sign up | `(auth)/sign-up` | Email, password, username (unique check on blur), display name | Sign up | Taken username / weak password inline; "Check your email" state if confirmation is on |
+| Sign up | `(auth)/sign-up` | Email, password, display name | Sign up | Email taken / weak password inline; "Check your email" state if confirmation is on |
+| Choose username | `(onboarding)/choose-username` | Explainer, username field (suggestion from display name), live availability status | Save, Sign out | Invalid / taken / check failed states; `23505` race → inline "just taken" |
 | Feed | `(tabs)/index` | `FlatList` of `TripCard` (cover, title, author, stop count, relative date), "+" header button | Pull to refresh, infinite scroll (keyset cursor), tap card / author | Skeleton cards; "No trips yet. Be the first." + CTA; retry banner; footer spinner; "You're all caught up" |
 | Trip detail | `trip/[id]` | Cover hero, title, author row, description, `TripMap` (numbered markers + polyline, fit to bounds), ordered stop list (name, note, photo carousel), sticky "Follow this trip" | Follow, tap stop → centre map, tap author; owner: Edit / Delete / visibility in header menu | Skeleton; "Trip unavailable" (not found / private); no stops → map hidden, Follow disabled; map failure → list still works |
 | Create / edit trip | `trip/new`, `trip/[id]/edit` | See 1.5 | Publish, Save draft, Discard | Title required, ≥1 stop to publish; per-photo upload progress + retry |
@@ -132,11 +136,12 @@ Cross-cutting: touch targets ≥ 44×44; every icon button has `accessibilityLab
 
 **Sign up → first trip**
 1. No session → Sign in → "Create account".
-2. Enter email, password, username, display name → submit (profile auto-created, then username updated).
-3. Guard flips → empty Feed with CTA.
-4. Tap "+" → `trip/new`.
-5. Title, optional cover/description, add stops.
-6. Publish → modal closes → `trip/[id]`.
+2. Enter email, password, display name → submit (profile auto-created with a generated username).
+3. Guard sends the user to "Choose username" → pick an available username → Save.
+4. Guard flips → empty Feed with CTA.
+5. Tap "+" → `trip/new`.
+6. Title, optional cover/description, add stops.
+7. Publish → modal closes → `trip/[id]`.
 
 **Feed → trip detail → follow**
 1. Pull to refresh / scroll to load more.
@@ -300,7 +305,7 @@ Each step: `coder` → `tester`; steps touching auth, user data, storage or netw
 | 2 | **Owner** applies `supabase/migrations/0001_init.sql` via the Supabase SQL Editor (once, on a fresh project); then coder generates `types/database.ts` | owner, coder, security |
 | 3 | Restructure routes (root Stack, `(auth)`, `(app)/(tabs)`), remove Explore, `SessionProvider` + guards | coder, tester |
 | 4 | Shared UI components + theme tokens | designer, coder, tester |
-| 5 | Sign in / sign up (+ username update) / sign out | coder, tester, security |
+| 5 | Sign in / sign up / choose-username onboarding / sign out | coder, tester, security |
 | 6 | My profile, other profile, edit profile + avatar upload | coder, tester, security |
 | 7 | Feed (`get_feed`, pagination, signed URLs) | coder, tester |
 | 8 | Trip detail: map, stop list, Follow this trip | coder, tester |
