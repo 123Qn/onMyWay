@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useSignedUrls } from '@/hooks/use-signed-urls';
 import { supabase } from '@/lib/supabase';
+import { subscribeTripEvents } from '@/lib/trip-events';
 import type { TripCardData } from '@/components/trip/trip-card';
 
 const PAGE_SIZE = 20;
@@ -143,6 +144,24 @@ export function useProfileTrips({ ownerId, publicOnly }: Options): ProfileTrips 
       requestRef.current++;
     };
   }, [start]);
+
+  // Keep the list in step with deletes and visibility changes made on the trip screen.
+  useEffect(
+    () =>
+      subscribeTripEvents((event) => {
+        if (!rowsRef.current.some((r) => r.id === event.id)) return;
+        if (event.type === 'visibility' && !(publicOnly && event.visibility === 'private')) {
+          rowsRef.current = rowsRef.current.map((r) =>
+            r.id === event.id ? { ...r, visibility: event.visibility } : r,
+          );
+        } else {
+          rowsRef.current = rowsRef.current.filter((r) => r.id !== event.id);
+          setCount((c) => (c === null ? c : Math.max(0, c - 1)));
+        }
+        setRows(rowsRef.current);
+      }),
+    [publicOnly],
+  );
 
   const refresh = useCallback(async () => {
     if (!ownerId) return;

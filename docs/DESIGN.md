@@ -651,3 +651,112 @@ Relative date helper `lib/format-date.ts` (pure, no new deps, no `Intl` reliance
 | Placeholder route | "Creating trips is coming soon" |
 
 Tester checks: first page shows 20 items, scrolling loads the next page once per threshold hit, no duplicate rows after refresh during a page load; airplane mode shows the right banner for first load vs refresh vs load-more; private trips appear only on my profile with a lock badge; covers load via ONE signed-URL request per page; tapping the author and the card go to different screens; opening my own username from the feed lands on my profile tab; Edit profile: dirty form + swipe/back/Cancel asks to discard, failed upload keeps the form, a race on a username shows the inline taken message; avatars show initials when `avatar_path` is null or the image fails; dark mode and 200% font scale keep cards readable.
+
+---
+
+## 9. Step 8 - Trip detail (`(app)/trip/[id].tsx`)
+
+### 9.1 New files
+
+| File | Purpose |
+|---|---|
+| `hooks/use-trip.ts` | Loads one trip with author and ordered stops/photos; returns `{ trip, status: 'loading' \| 'ready' \| 'unavailable' \| 'error', isOwner, refresh, retry, setVisibility, remove }` |
+| `components/trip/trip-map.tsx` + `trip-map.web.tsx` | Map (spec 9.3). Props below |
+| `components/trip/stop-list-item.tsx` | One stop card (9.2) |
+| `components/trip/photo-strip.tsx` | Horizontal thumbnails + full-screen viewer (9.2) |
+| `components/trip/follow-trip-button.tsx` | Sticky bar + sheets (9.4) |
+| `lib/maps-links.ts` | Pure helpers: `splitIntoLegs`, `googleDirectionsUrl`, `appleDirectionsUrl` |
+| `constants/map-style-dark.ts` | Google dark `customMapStyle` JSON for Android |
+| `components/ui/icon.tsx` (edit) | Add `IconName`s `more` (`ellipsis` / `more_vert`) and `directions` (`arrow.triangle.turn.up.right.diamond` / `directions`) |
+
+Data: one query `trips` `.select('id, owner_id, title, description, cover_path, visibility, created_at, profiles:owner_id(username, display_name, avatar_path), stops(id, position, name, lat, lng, address, notes, stop_photos(id, position, storage_path))').eq('id', id).maybeSingle()`, with `.order('position', { referencedTable: 'stops' })` and the same for `stop_photos`; also sort client-side. `null` data without an error means not found OR private-and-not-owner (RLS hides it): both map to `unavailable`. Display numbers are the 1-based index in the sorted list (DB positions may have gaps). Sign the cover and ALL stop photo paths with ONE `useSignedUrls` call (max 1 + 20x5 paths). `isOwner = trip.owner_id === profile.id`.
+
+### 9.2 Screen layout
+
+Stack header: title "Trip" (static), back button; owner only: `headerRight` = `IconButton icon="more" accessibilityLabel="Trip options"` (menu in 9.5). Body: `Screen edges={['left','right']}` containing a `ScrollView` (pull-to-refresh = refetch) with bottom padding = follow bar height + safe-area bottom. Order top to bottom:
+
+1. Cover hero: full width, 16:9, signed URL (`cacheKey: cover_path`, `contentFit="cover"`), no-cover placeholder from 8.2. `accessibilityRole="image"`, label "Cover photo of {title}" (placeholder: `accessible={false}`).
+2. Content block, padding `Spacing.three`, gap `Spacing.three`:
+   - Title: `ThemedText type="title"`, header role, up to 3 lines then wraps freely (no truncation).
+   - Private badge (only when `visibility === 'private'`, which only the owner can ever see): pill with lock icon + "Private. Only you can see this trip."
+   - Author row: `Pressable` (>= 56 px): `Avatar md`, display name (`label`), caption "@username - 12 March 2025" (`formatDateLong`). Label "{displayName}, @{username}. View profile". -> `/user/[username]` (own trip redirects to my tab, as in 7.3).
+   - Description (omit when empty): `body`; when longer than 240 characters or 5+ line breaks, collapse to 4 lines with a ghost `Button size="sm"` "Read more" / "Show less" (`accessibilityState.expanded`).
+3. Route section (only with >= 1 stop): section header "Route" (`heading`), `TripMap` (9.3) with horizontal margin `Spacing.three`, then a `caption` `textMuted`: "Lines connect the stops in order. They are not a driving route." (only with >= 2 stops).
+4. Stops section: header "Stops" (`heading`) + caption "{n} stops"; list of `StopListItem` (a plain `View` map, not a FlatList: max 20 items inside the ScrollView), gap `Spacing.three`.
+
+`StopListItem` props: `index: number` (1-based), `stop: { id, name, address, notes, photos: { id, url }[] }`, `selected: boolean`, `onPress: () => void`, `onRetryPhoto?: (path) => void`, `onLayout` (parent records y for scroll-to). Layout: card bg `surface`, radius `Radius.lg`, padding `Spacing.three`, selected = 2 px `primary` border (unselected 2 px transparent, no layout shift) and `primarySoft` background. Header row (a `Pressable`, >= 44 px): number badge (28 px circle, `primary` bg, `onPrimary` bold text, same look as the map marker), name (`subheading`, wraps), then address (`caption`, `textMuted`, max 2 lines) under it. Notes: `body`, collapse like the description above (140 characters). `PhotoStrip` follows as a SIBLING of the header pressable (separate focus targets), only if the stop has photos.
+- Header pressable: role `button`, label "Stop {n}: {name}", hint "Shows this stop on the map".
+- `PhotoStrip`: horizontal `FlatList`, 120x120 tiles, `Radius.md`, gap `Spacing.two`, `expo-image` with `cacheKey: storage_path`; a missing/failed URL shows an `image` icon placeholder (retry signing once on error). Each tile: button, label "Photo {i} of {m} from {stop name}". Tap opens a full-screen `Modal` viewer: black background, horizontally paged `FlatList` (`pagingEnabled`, `contentFit="contain"`), close `IconButton icon="close" accessibilityLabel="Close photo viewer"` at the top (inside safe area), page text "{i} / {m}" in white `caption`, Android back closes (`onRequestClose`). No zoom gestures in MVP.
+
+Sticky bar (`FollowTripButton`): absolute bottom, bg `background`, 1 px top border `border`, padding `Spacing.three` and bottom `max(insets.bottom, Spacing.three)`, a `Button` primary `lg` `fullWidth` `icon="directions"` "Follow this trip" (disabled with 0 stops; hidden while loading/error/unavailable).
+
+### 9.3 `TripMap`
+
+| Prop | Type | Default |
+|---|---|---|
+| `stops` | `{ id: string; number: number; name: string; lat: number; lng: number }[]` | required (sorted) |
+| `selectedStopId` | `string \| null` | `null` |
+| `onSelectStop` | `(id: string \| null) => void` | none (null = map background tapped) |
+| `height` | `number` | `Math.min(320, windowHeight * 0.4)`, min 220 |
+| ref | `TripMapHandle { focusStop(id): void; fitAll(): void }` via `forwardRef` | |
+
+Behaviour (check prop names in the react-native-maps 1.27 docs):
+- `MapView` with rounded corners (`Radius.lg`, `overflow: 'hidden'`), `rotateEnabled={false}`, `pitchEnabled={false}`, `toolbarEnabled={false}` (Android: hides the "open in Google Maps" buttons), no user-location layer (no permission needed). Android uses Google tiles (needs the API key from step 11; without it the map is blank but the list still works); iOS uses Apple Maps (no key).
+- Initial camera: one DISTINCT coordinate (also when all stops share a point) -> `initialRegion` centred on it with `latitudeDelta = longitudeDelta = 0.02` (about a neighbourhood). Two or more -> after both `onMapReady` and the first layout, call `fitToCoordinates(coords, { edgePadding: { top: 48, right: 48, bottom: 48, left: 48 }, animated: false })` (Android needs the layout first; ignore a call before then). Refit when the stop set changes.
+- Markers: one `Marker` per stop with a custom 32 px circle view (same style as the list badge: `primary` bg, `onPrimary` number, 2 px white ring so it reads on any tile). Selected: 40 px, `text` colour bg with `background` colour number, `zIndex` above others. `tracksViewChanges` true only on first render and when `selected` changes, then false (performance). Set `title` = stop name and `identifier` = stop id.
+- Polyline from the stops in order (>= 2 stops): `strokeColor = theme.primary`, `strokeWidth 4`, `lineJoin="round"`, straight segments.
+- Interactions: tap marker -> `onSelectStop(id)`; the screen scrolls the list to that card (scroll offset = recorded card y minus `Spacing.three`) and highlights it. Tap a list header -> `onSelectStop(id)` + `focusStop(id)` (animate to the stop at `latitudeDelta 0.02` unless already closer) + scroll the page so the map top is visible. Tap the map background -> `onSelectStop(null)`. A selected stop stays highlighted until another interaction.
+- Dark mode: iOS `userInterfaceStyle={scheme}`; Android `customMapStyle={scheme === 'dark' ? darkStyle : undefined}` (`constants/map-style-dark.ts`, standard Google dark style).
+- The map is inside a vertical ScrollView: keep the horizontal `Spacing.three` margins and the height cap so users can always start a page scroll beside or below the map.
+- Accessibility: the wrapper has `accessible`, role `image`, label "Map of the trip route with {n} stops. The stop list below has the same information." and hides its children from the accessibility tree (`importantForAccessibility="no-hide-descendants"`, `accessibilityElementsHidden`). The list is the accessible source of truth.
+- `trip-map.web.tsx`: same props/ref (no-ops); renders a bordered `surface` card of the same height with `Icon map xl`, text "The route map is available in the mobile app." The Follow button and list still work on web.
+
+### 9.4 Follow this trip
+
+Decisions:
+- Origin = the FIRST STOP (not the viewer's location): the trip is a fixed itinerary, no location permission is needed, and it works for viewers anywhere. The user can still change the start inside the maps app. Points are `lat,lng` with 6 decimals (names are ambiguous to geocode, so Google shows coordinates instead of place names; accepted limitation). Skip consecutive points with identical coordinates when building URLs; if fewer than 2 distinct points remain, treat the trip as single-stop.
+- Google Maps (full multi-stop): `https://www.google.com/maps/dir/?api=1&origin={o}&destination={d}&waypoints={w1|w2|...}&travelmode=driving`, each value through `encodeURIComponent` (so `|` becomes `%7C`). Google allows at most 9 waypoints, i.e. 11 points per URL (verify against the current Maps URLs docs); `travelmode=driving` is only the default, users can switch inside the app.
+- Apple Maps cannot be relied on for multi-stop URLs, so it opens ONE route: from the first to the last stop of the chosen part (`https://maps.apple.com/?saddr={o}&daddr={d}&dirflg=d`), and the menu label says so ("Apple Maps (start and end only)"). Trying `+to:` chaining is a later experiment, out of scope.
+- 1 stop: no origin; Google `...dir/?api=1&destination={d}`, Apple `https://maps.apple.com/?daddr={d}&dirflg=d`: navigate from the viewer's location to that stop (not "disabled").
+- 0 stops: button disabled.
+
+Legs (`splitIntoLegs(points, maxPoints = 11)`): a leg has up to 11 points and consecutive legs SHARE their boundary stop, so the route has no gap. Leg i covers stops `10*(i-1)+1 ... min(10*i+1, n)`; number of legs = `ceil((n-1)/10)`. With the 20-stop cap that is at most 2 legs: n <= 11 -> 1 leg; n = 12..20 -> 2 legs (for n = 20: stops 1-11 and 11-20).
+
+Flow:
+1. Tap "Follow this trip".
+2. iOS: `ActionSheetIOS` title "Follow this trip", message "Open the route in:", options "Google Maps", "Apple Maps (start and end only)", "Cancel" (omit the Apple suffix text when n = 1 and call it "Apple Maps"). Android: skip this step (Google Maps only).
+3. If more than 1 leg: second sheet (iOS `ActionSheetIOS`; Android `Alert.alert`, at most 3 buttons): title "Choose a part", message "Maps can show up to 11 stops at a time. Part 2 starts where part 1 ends.", options "Part 1: stops 1-11", "Part 2: stops 11-20", "Cancel".
+4. `Linking.openURL(url)`. Rejection -> `Alert.alert("Could not open maps", "No maps app could open this route.")`.
+No loading state is needed; guard against double taps for 500 ms.
+
+### 9.5 Owner actions (header menu)
+
+- Step 8 ships: "Make private" / "Make public" (label depends on state) and "Delete trip". "Edit trip" is DEFERRED to step 10 (do not show a disabled item).
+- Menu: iOS `ActionSheetIOS` (options visibility toggle, "Delete trip" destructive, "Cancel"); Android `Alert.alert("Trip options", undefined, [toggle, delete, cancel])`.
+- Visibility: making public asks first via `Alert`: "Make this trip public?" / "Everyone on onMyWay will be able to see it." [Cancel, "Make public"]. Making private has no confirm. Update `trips.visibility`; on success update local state (the badge appears or disappears); failure -> `Alert` "Could not update visibility. Please try again." Disable the menu button while the request runs.
+- Delete: `Alert` "Delete this trip?" / "This permanently deletes the trip, its stops and photos." [Cancel, "Delete" destructive]. Then a blocking overlay (`overlay` colour scrim, spinner, "Deleting trip...", touches blocked). Order per PLAN 2.9: list and remove all Storage objects under `trip-photos/{user_id}/{trip_id}/`, then delete the `trips` row (cascade removes stops/photos rows). If storage removal fails, do NOT delete the row (so a retry still finds the files): show `Alert` "Could not delete the trip. Please try again." On success `router.back()` (the Feed/profile lists must drop the item: refetch on focus or remove it locally).
+
+### 9.6 States
+
+| State | UI |
+|---|---|
+| Loading | `SkeletonGroup`: hero 16:9, title line (70%), author row (circle md + two lines), two text lines, map block (rect, map height, `Radius.lg`), 3 stop card skeletons. No follow bar |
+| Unavailable | `EmptyState icon="lock" title="Trip unavailable" message="This trip doesn't exist, was removed, or is private." actionLabel="Go back"` |
+| Error | `ErrorBanner message="Could not load this trip." onRetry` at the top of the screen |
+| No stops | Skip the Route and Stops sections; show a centred muted block `Icon map xl`, "No stops yet", "This trip doesn't have any stops." Follow button visible but disabled |
+| Photo failed | Tile placeholder; one re-sign attempt |
+
+### 9.7 Copy (step 8)
+
+"Trip", "Route", "Stops", "{n} stops" / "1 stop", "Lines connect the stops in order. They are not a driving route.", "Private. Only you can see this trip.", "Read more", "Show less", "Follow this trip", "Open the route in:", "Google Maps", "Apple Maps (start and end only)", "Choose a part", "Part {i}: stops {a}-{b}", "Trip options", "Make public", "Make private", "Delete trip", "Make this trip public?", "Everyone on onMyWay will be able to see it.", "Delete this trip?", "This permanently deletes the trip, its stops and photos.", "Deleting trip...", "Trip unavailable", "This trip doesn't exist, was removed, or is private.", "No stops yet", "This trip doesn't have any stops.", "Could not load this trip.", "Could not update visibility. Please try again.", "Could not delete the trip. Please try again.", "Could not open maps", "No maps app could open this route.", "The route map is available in the mobile app.", "Close photo viewer".
+
+### 9.8 Tester checklist
+
+- Owner sees the lock badge and the options menu on a private trip; a non-owner opening a private trip id sees "Trip unavailable"; non-owners never see the menu.
+- Markers are numbered 1..n and match the list numbers; the polyline follows list order; the map fits all stops with padding; a one-stop trip (and all stops at one point) opens at a street-level zoom.
+- Marker tap scrolls to and highlights the card; card header tap centres the map on the stop and highlights the marker.
+- Follow: 1 stop opens directions to it; 5 stops open one Google URL with 3 waypoints; 15 and 20 stops show the part picker with correct overlap (1-11, 11-15 / 11-20); iOS shows the app sheet, Android opens Google Maps directly; Apple Maps opens start to end only; 0 stops disables the button; the bar clears the home indicator.
+- Delete removes the Storage files and the row, then returns; a forced storage failure keeps the row. Visibility toggle updates the badge; "Make public" asks for confirmation.
+- Photo viewer opens, pages, closes with the button and the Android back key. Failed photos show a placeholder.
+- Screen reader: the map is skipped (one label), every stop and photo is reachable in the list; Dynamic Type 200% keeps the follow bar usable; dark mode map style applies on both platforms.
+- Web: the page renders, the map shows the notice, nothing crashes.

@@ -4,6 +4,7 @@ import type { TripCardData } from '@/components/trip/trip-card';
 import { useSignedUrls } from '@/hooks/use-signed-urls';
 import { getAvatarUrl } from '@/lib/avatar-url';
 import { supabase } from '@/lib/supabase';
+import { subscribeTripEvents } from '@/lib/trip-events';
 import type { Database } from '@/types/database';
 
 const PAGE_SIZE = 20;
@@ -98,6 +99,17 @@ export function useFeed(): Feed {
       requestRef.current++;
     };
   }, [start]);
+
+  // A deleted or newly private trip leaves the feed immediately.
+  useEffect(
+    () =>
+      subscribeTripEvents((event) => {
+        if (event.type === 'visibility' && event.visibility === 'public') return;
+        rowsRef.current = rowsRef.current.filter((r) => r.trip_id !== event.id);
+        setRows(rowsRef.current);
+      }),
+    [],
+  );
 
   const refresh = useCallback(async () => {
     if (refreshing) return;
