@@ -1,6 +1,22 @@
 # onMyWay - Design system and screen redesign ("UI refresh")
 
-Audience: coder, tester, manager. Branch: `ui-refresh`. Status: proposal v1 (owner review pending).
+Audience: coder, tester, manager. Branch: `ui-refresh`. Status: v2, owner decisions FINAL (no open questions remain).
+
+## Owner decisions (final)
+
+| # | Decision | Where it is specified |
+|---|---|---|
+| 1 | `#C73A10` (`primary`) for all text and for buttons that carry text. The tab-bar "+" is icon-only and uses bright coral `#F2592B` (3.6:1 with a white icon, meets the 3:1 non-text rule). Dark mode "+" = `#FF7A4D` fill with a `#240B02` icon | 2.2 (`fab`, `onFab`), 3.9 |
+| 2 | Font: Plus Jakarta Sans | 2.3 |
+| 3 | Custom floating tab bar approved (blur on iOS, solid on Android) | 3.9, 4 |
+| 4 | "+" moves from the Feed header to the tab bar centre (supersedes PLAN decision #6) | 3.9, 4, 5.1 |
+| 5 | Profile cover derived from the newest trip cover, gradient fallback | 5.2 |
+| 6 | Profile stats via new RPC `get_profile_stats(p_user_id)` (migration 0003, SECURITY INVOKER; others see public trips' counts only, the owner sees all; returns trips, stops, photos). db-designer writes it | 5.2 |
+| 7 | Own profile: single "Trips" tab; private trips show a lock badge | 3.7, 5.2 |
+| 8 | Distance in km only | 5.3 |
+| 9 | Time-of-day greeting "Good morning / Good afternoon / Good evening, {firstName}" | 5.1 |
+| 10 | Temporary logo: wordmark "onMyWay" + map-pin mark (`assets/brand/logo.svg`, `assets/brand/mark.svg`). Auth tagline "Share the journey. Follow the way." | 3.13, 8.1 |
+| 11 | Feed card 4:5; create/edit trip cover crop changes from 16:9 to 4:5 | 3.11, 5.6 |
 
 References: `docs/design-refs/refs-social.png` ("ref-social": coral primary, pill buttons, full-bleed image cards with overlaid author, floating tab bar with a round centre "+", cover + overlapping avatar profile, underline tabs, 2-column grid) and `docs/design-refs/refs-travel.png` ("ref-travel": ivory background, white rounded cards, greeting header, info tiles, rounded cover image, photo strip, frosted floating tab bar and floating CTA).
 
@@ -15,8 +31,9 @@ Explicit overrides of the MVP spec:
 | 1.2 teal palette, 1.3 radii, 1.4 system font | Sections 2.2, 2.5, 2.3 below |
 | 3.1 Button radius `Radius.md` | Pill (`Radius.full`) |
 | 8.1 Feed header "Feed" + "+" `IconButton` | Greeting header (5.1); the "+" lives in the tab bar (4). Empty-state CTAs unchanged. PLAN decision #6 ("+" in the Feed header) is replaced by "centre + in the tab bar" |
-| 8.3 TripCard (author row above 16:9 cover, solid private badge in meta row) | Full-bleed image card with overlay (3.11, 5.1). The private badge may now sit ON the image (dark pill, contrast guaranteed) |
-| 7.1/7.2 ProfileHeader (centred avatar + one stat line) | Cover + overlapping avatar + 3 stats + underline tabs + 2-column grid (5.2) |
+| 8.3 TripCard (author row above 16:9 cover, solid private badge in meta row) | Full-bleed 4:5 image card with overlay (3.11, 5.1). The private badge may now sit ON the image (dark pill, contrast guaranteed) |
+| 7.1/7.2 ProfileHeader (centred avatar + one stat line) | Cover + overlapping avatar + 3 stats (RPC `get_profile_stats`) + single "Trips" underline header + 2-column grid (5.2) |
+| 11.x trip form cover crop 16:9 | 4:5 (5.6) |
 | 9.2 Trip detail order and sticky bar | New order, info tiles, floating Follow button (5.3). Map stays inline |
 | PLAN 1.2 "NativeTabs" | JS tabs with a custom floating bar (4) |
 | MVP 3.8 / 8.2 "compact" TripCard | Replaced by the `grid` variant on profiles (kept in code until unused) |
@@ -48,7 +65,7 @@ Nothing in this document changes: data fetching, hooks, validation rules, copy s
 
 ### 2.2 Colours
 
-Rationale for the coral: ref-social uses about `#F04E23` (white on it is only 3.6:1, fails AA for normal text). `primary` is therefore a slightly deeper coral that passes 4.5:1 with white text and as text on ivory/white. The brighter brand coral exists as `primaryBright`, for DECORATIVE use only (gradients, indicators, illustration), never for text and never as a text background.
+Rationale for the coral (owner decision 1): ref-social uses about `#F04E23` (white on it is only 3.6:1, fails AA for normal text). `primary` `#C73A10` is therefore a slightly deeper coral that passes 4.5:1 with white text and as text on ivory/white; it is used for ALL text and every button that carries text. The brighter brand coral `primaryBright` `#F2592B` is for DECORATIVE use and for the ICON-ONLY tab-bar "+" (white icon 3.6:1, meets the 3:1 non-text rule). Never for text and never as a text background.
 
 | Token | Light | Dark | Use |
 |---|---|---|---|
@@ -59,9 +76,11 @@ Rationale for the coral: ref-social uses about `#F04E23` (white on it is only 3.
 | `borderStrong` | `#8C8279` | `#7A6F65` | Input outlines, dashed pickers, radio rings (>= 3:1 non-text) |
 | `text` | `#1C1815` | `#F7F2EC` | Body and titles |
 | `textSecondary` = `textMuted` | `#6B625A` | `#B9AEA3` | Secondary text |
-| `primary` | `#C73A10` | `#FF7A4D` | Buttons, links, active icons, focus ring, FAB fill |
+| `primary` | `#C73A10` | `#FF7A4D` | Text buttons, links, active icons, focus ring (NOT the "+" fill, see `primaryBright`) |
 | `primaryPressed` | `#A32C09` | `#FF9770` | Pressed state; ALSO the text/icon colour on `primarySoft` |
-| `primaryBright` (new) | `#F2592B` | `#FF7A4D` | Decorative only: gradients, underline glow, seeded fallbacks |
+| `primaryBright` (new) = `fab` | `#F2592B` | `#FF7A4D` | Tab-bar "+" fill (icon-only) and decorative use: gradients, underline glow, seeded fallbacks. No text on it |
+| `onFab` (new) | `#FFFFFF` | `#240B02` | "+" icon colour. Light 3.6:1 on `#F2592B` (>= 3:1 non-text); dark about 7.5:1 on `#FF7A4D` |
+| `fabPressed` (new) | `#C73A10` | `#FF9770` | "+" pressed fill |
 | `onPrimary` | `#FFFFFF` | `#240B02` | Text/icon on `primary` |
 | `primarySoft` | `#FDE9E1` | `#3A1E14` | Selected chip, active tab capsule, icon circles, avatar fallback. Text on it: `text` or `primaryPressed` |
 | `danger` | `#B3261E` | `#FF8F85` | Errors, destructive (deliberately crimson, distinct from the orange primary; error is always icon + text) |
@@ -91,18 +110,19 @@ Contrast (WCAG relative luminance; the coral pairs in light mode were hand-compu
 | `primary` as text on `surfaceMuted` | 4.5 (limit) | 6.6 |
 | `primaryPressed` on `primarySoft` | 6.1 | 7.4 |
 | `primary` on `primarySoft` | 4.4 - NOT allowed for text (icons/non-text only, need 3:1) | 5.9 |
+| `onFab` on `primaryBright` (icon-only, needs 3:1) | 3.6 | 7.5 |
 | `danger` on `background` / `dangerSoft` | 6.1 / 5.6 | 8.5 / 7.0 |
 | `borderStrong` on `background` / `surface` / `surfaceMuted` | 3.5 / 3.8 / 3.3 | 3.8 / 3.2 / 3.3 |
 | `onImage` on scrim (worst case white photo, alpha >= 0.6) | 5.7+ | 5.7+ |
 
 Rules:
 - `primary` as TEXT is allowed on `background` and `surface` only. On `surfaceMuted`/`primarySoft` use `primaryPressed` (affects: ghost button on muted fills, avatar initials, chip text).
-- Never put text on `primaryBright`. White text on a gradient is allowed only on the brand hero (3.13) whose stops all pass 4.5:1.
+- Never put text on `primaryBright` (its only foreground is the icon-only "+", with `onFab`). White text on a gradient is allowed only on the brand hero (3.13) whose stops all pass 4.5:1.
 - Error is never colour-only (icon + text), as in MVP.
 
 ### 2.3 Typography
 
-Decision: Plus Jakarta Sans (package `@expo-google-fonts/plus-jakarta-sans`). Why over Inter: its geometric, slightly rounded forms match the soft, friendly look of both references and give the app a recognisable personality, while Inter reads as neutral/"default". It covers Vietnamese (the owner and likely first audience) with full diacritic support, ships static weights, and has the same licence (OFL). Trade-off: it is a little wider than Inter, so scale sizes below were kept at MVP values and line heights are generous (1.4-1.5). Fallback plan if the owner dislikes it: swap the package and the `FontFamily` constants only (one file), because components never name a font.
+Decision (owner, final): Plus Jakarta Sans (package `@expo-google-fonts/plus-jakarta-sans`). Why over Inter: its geometric, slightly rounded forms match the soft, friendly look of both references and give the app a recognisable personality, while Inter reads as neutral/"default". It covers Vietnamese (the owner and likely first audience) with full diacritic support, ships static weights, and has the same licence (OFL). Trade-off: it is a little wider than Inter, so scale sizes below were kept at MVP values and line heights are generous (1.4-1.5). Components never name a font (only `FontFamily` constants), so a future swap is a one-file change.
 
 Weights to load (4 static files, about 100 KB each; no italics, no 800):
 
@@ -180,7 +200,7 @@ Token `Shadow` (function `shadow(theme, level)` returning a style object). iOS u
 | `sm` | (0,2) / 0.06 / 6 | 2 | Tiles, grid tiles, stop cards |
 | `md` | (0,6) / 0.10 / 16 | 4 | Feed cards, trip cover, map card, input focus |
 | `lg` | (0,10) / 0.14 / 24 | 8 | Floating tab bar, floating buttons, pick-location search/confirm cards |
-| `fab` | (0,8) / 0.35 / 14, colour `primary` | 8 | Centre "+" and the floating Follow button |
+| `fab` | (0,8) / 0.35 / 14, colour `primaryBright` for the "+", `primary` for the floating Follow button | 8 | Centre "+" and the floating Follow button |
 
 Dark mode: shadows are nearly invisible on dark surfaces, so use opacity x2 (black) AND separate surfaces by value (`surface` `#1E1A17` on `background` `#14110F`) plus a 1 px `border` on cards. Light mode cards have no border.
 
@@ -275,7 +295,7 @@ Adds `variant="glass"`: 44x44 circle, `GlassSurface` fill, glyph `text`; used ov
 
 ### 3.7 UnderlineTabs (new, `ui/underline-tabs.tsx`)
 
-Props: `tabs: { key: string; label: string }[]`, `value: string`, `onChange(key)`, `style`. Row, full width, bottom hairline `border`. Each item `flex: 1`, height 48, label `label` (active `text`, inactive `textMuted`), role `tab`, `accessibilityState={{ selected }}`; container role `tablist`. Indicator: 3 px high pill, `primary`, width 40% of the item, centred under the active item, slides over `Duration.fast` (instant when reduce motion). With ONE tab: render the same visual as a non-interactive section header (role `header`, indicator shown) and no `tab` roles. Phase 2 adds items to the array without layout changes.
+Props: `tabs: { key: string; label: string }[]`, `value: string`, `onChange(key)`, `style`. Row, full width, bottom hairline `border`. Each item `flex: 1`, height 48, label `label` (active `text`, inactive `textMuted`), role `tab`, `accessibilityState={{ selected }}`; container role `tablist`. Indicator: 3 px high pill, `primary`, width 40% of the item, centred under the active item, slides over `Duration.fast` (instant when reduce motion). With ONE tab (the profile "Trips" tab on both own and other profiles, owner decision 7): render the same visual as a non-interactive section header (role `header`, indicator shown) and no `tab` roles. Phase 2 adds items to the array without layout changes.
 
 ### 3.8 StatsRow (new, `profile/stats-row.tsx`)
 
@@ -287,7 +307,7 @@ Anatomy (centred, `maxWidth 420`, side margin 16, `bottom = max(insets.bottom - 
 - Pill: height 64, radius `full`, `GlassSurface` (iOS blur) or `glassSolid` (Android), `Shadow.lg`.
 - Three slots: left tab (flex 1), centre spacer (width 72), right tab (flex 1). Routes are split in half around the centre; with 2 routes today it is [Feed][+][Profile]; phase 2 with 4 routes becomes [Feed][Explore][+][Alerts][Profile] with no redesign.
 - Tab item: min hit 64 high x flex width (>= 80), column: icon 24 over label `label` 12 (use `caption`-size, `semibold`, `maxFontSizeMultiplier 1.3`). Active: a capsule (height 32, width 56, `primarySoft`) behind the icon, icon `primary`, label `text`. Inactive: icon and label `textMuted`. Role `tab`, `accessibilityState.selected`, label = tab title.
-- Centre "+" (FAB): 56 px circle, fill `primary`, glyph `plus` 28 px `onPrimary`, `Shadow.fab`, 4 px ring in `background` colour (looks cut into the bar), centred horizontally, top at -20 (protrudes 20 px above the pill). Role `button`, label "Create trip", hint "Opens the new trip form". Pressed: scale 0.94, fill `primaryPressed`. It is NOT a route: `onPress` runs `router.push('/trip/new')` (the `fullScreenModal` already registered in `(app)/_layout.tsx` covers the bar).
+- Centre "+" (FAB, owner decisions 1 and 4): 56 px circle, fill `primaryBright` (light `#F2592B`, dark `#FF7A4D`), glyph `plus` 28 px `onFab` (light `#FFFFFF`, dark `#240B02`), `Shadow.fab`, 4 px ring in `background` colour (looks cut into the bar), centred horizontally, top at -20 (protrudes 20 px above the pill). Icon-only: no label text is ever drawn on it. Role `button`, label "Create trip", hint "Opens the new trip form". Pressed: scale 0.94, fill `fabPressed`. It is NOT a route: `onPress` runs `router.push('/trip/new')` (the `fullScreenModal` already registered in `(app)/_layout.tsx` covers the bar).
 - Hidden automatically on pushed screens (they sit above the tabs in the Stack).
 - Tapping the active tab: scroll the screen's list to top (nice-to-have, step 4b).
 
@@ -302,7 +322,7 @@ Anatomy (centred, `maxWidth 420`, side margin 16, `bottom = max(insets.bottom - 
 `TripCardData` and callbacks unchanged. `variant: 'feed' | 'grid' | 'compact'`.
 
 Feed variant ("hero card"):
-- Outer: width 100%, height `H = min(cardWidth * 1.25, 0.65 * windowHeight)`, radius `xl`, `Shadow.md`, bg `primarySoft`. Inner clip: image `absoluteFill` (`contentFit="cover"`, `transition 200`, `cacheKey` as MVP 8.2), then `imageScrim` gradient anchored bottom (65% of H). No cover: seeded `coverFallbacks[trip.id]` gradient plus a centred white `map` icon (xl, 0.9 opacity) instead of the flat placeholder.
+- Outer: width 100%, aspect ratio 4:5 (owner decision 11), i.e. height `H = min(cardWidth * 1.25, 0.65 * windowHeight)` (the cap only applies on very wide/short windows), radius `xl`, `Shadow.md`, bg `primarySoft`. Inner clip: image `absoluteFill` (`contentFit="cover"`, `transition 200`, `cacheKey` as MVP 8.2), then `imageScrim` gradient anchored bottom (65% of H). No cover: seeded `coverFallbacks[trip.id]` gradient plus a centred white `map` icon (xl, 0.9 opacity) instead of the flat placeholder.
 - Top-left (16, 16): private badge `Chip tone="onImage" icon="lock"` "Private" (only when `isPrivate`). Top-right: reserved (phase 2 save/bookmark), not rendered.
 - Bottom block (padding 16, gap 8, max height 40% of H; `onImage` text; all `maxFontSizeMultiplier 1.3`):
   1. Author row (a separate `Pressable`, min height 44): `Avatar` 32 with `ring="image"` + display name `label` `onImage` (1 line) + " · " + relative date `caption` `onImageMuted`. Rendered only when `showAuthor` and `author` exist.
@@ -326,7 +346,7 @@ Grid variant (profile 2-column grid):
 
 ### 3.13 Auth hero (`auth/auth-hero.tsx`, new)
 
-Block at the top of sign-in / sign-up / choose-username: `Gradients.brand`, bottom corners `xxl`, extends under the status bar (the screen uses `edges` without `top` for the hero and adds `insets.top` padding inside). Content: wordmark "onMyWay" in `display` `onPrimary` (large text) and, below it, tagline `bodyStrong` `onPrimary` ("Share your journeys." on sign-in, "Join the trip." on sign-up; copy is new, owner may change). Keep decorative shapes (white at 10%) away from text because they lower contrast. Heights: sign-in 240 + inset, sign-up and choose-username 180 + inset. Status bar style `light` on these screens (`<StatusBar style="light" />`; dark mode uses the same hero).
+Block at the top of sign-in / sign-up / choose-username: `Gradients.brand`, bottom corners `xxl`, extends under the status bar (the screen uses `edges` without `top` for the hero and adds `insets.top` padding inside). Content: the temporary logo (owner decision 10): the map-pin mark (`assets/brand/mark.svg`, drawn as a 56 px image or an inline component; on the brand gradient use a white version of the pin, `onPrimary`, hole transparent) next to or above the wordmark "onMyWay" set as text in `display` `onPrimary` (large text, so it follows the font, not the SVG), and below it the tagline `bodyStrong` `onPrimary`: "Share the journey. Follow the way." (same tagline on sign-in, sign-up and choose-username). Keep decorative shapes (white at 10%) away from text because they lower contrast. Heights: sign-in 240 + inset, sign-up and choose-username 180 + inset. Status bar style `light` on these screens (`<StatusBar style="light" />`; dark mode uses the same hero).
 
 ### 3.14 Gradient and GlassSurface
 
@@ -334,7 +354,7 @@ Spec in 2.7 and 2.8. Both decorative: `accessible={false}`, `pointerEvents="none
 
 ---
 
-## 4. Tab bar decision
+## 4. Tab bar decision (approved by the owner, decisions 3 and 4)
 
 Problem: `NativeTabs` (`expo-router/unstable-native-tabs`) renders the platform tab bar (UITabBar / Material navigation bar). It cannot host a custom centre button, a floating pill, or custom blur.
 
@@ -345,7 +365,7 @@ Problem: `NativeTabs` (`expo-router/unstable-native-tabs`) renders the platform 
 | C. `expo-router` `Tabs` (JS tabs, built on the bundled React Navigation bottom tabs; `expo-router/build/layouts/Tabs` is present in `node_modules`) with a custom `tabBar` component | RECOMMENDED. No new dependency for the structure, full control of layout, state, a11y, and the centre button; screens stay lazy and frozen; works the same on iOS and Android. |
 | D. `expo-router/ui` headless `Tabs`/`TabList`/`TabTrigger` | Also feasible (already used by `app-tabs.web.tsx`), but it is a less mature API and gives fewer navigator features (screen freezing, lazy mount). Keep it only for web. |
 
-Recommendation: C. Trade-offs the owner accepts: we lose the automatic native/iOS 26 "liquid glass" tab bar and native tab behaviours (long-press, re-tap-to-top are re-implemented by hand); in exchange the bar is identical on both platforms and exactly like the references. Where iOS 26 liquid glass is available `GlassSurface` can use `expo-glass-effect` inside our bar, which gives most of the native look.
+Recommendation: C. Trade-offs the owner has accepted: we lose the automatic native/iOS 26 "liquid glass" tab bar and native tab behaviours (long-press, re-tap-to-top are re-implemented by hand); in exchange the bar is identical on both platforms and exactly like the references. Where iOS 26 liquid glass is available `GlassSurface` can use `expo-glass-effect` inside our bar, which gives most of the native look.
 
 Wiring:
 - `src/components/app-tabs.tsx` (native file) becomes: `<Tabs tabBar={(props) => <FloatingTabBar {...props} />} screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: theme.background } }}>` with `<Tabs.Screen name="index" options={{ title: 'Feed' }} />` and `<Tabs.Screen name="profile" options={{ title: 'Profile' }} />`. `(tabs)/_layout.tsx` is unchanged (`<AppTabs />`). `app-tabs.web.tsx` keeps the headless implementation, restyled with tokens only (web is not a target; optionally remove the Expo "Docs" link as suggested in MVP section 4).
@@ -365,12 +385,12 @@ General: canvas `background`; screen padding 16; section gap 24; all lists use `
 - `Screen tabBarInset padded={false}` with one `FlatList`. The greeting header is `ListHeaderComponent` (scrolls away) so the first card can use the full height.
 - Greeting header (padding 16, bottom 8): row, `alignItems: center`, gap 12:
   - Left: `Avatar` 48 (own avatar, tap -> `router.navigate('/profile')`, label "Open your profile", hit 48).
-  - Middle (flex 1): "Hi, {firstName}" in `title` (1 line; `firstName` = first whitespace-separated word of `display_name`, fallback `username`; truncated after 20 chars) and below it `body` `textMuted` "Where to next?".
+  - Middle (flex 1): `{greeting}, {firstName}` in `title` (1 line, `adjustsFontSizeToFit`, min scale 0.8; `firstName` = first whitespace-separated word of `display_name`, fallback `username`; truncated after 20 chars) and below it `body` `textMuted` "Where to next?". Greeting by DEVICE LOCAL hour `h` (0-23): `05 <= h < 12` "Good morning"; `12 <= h < 18` "Good afternoon"; otherwise (`18 <= h < 24` and `0 <= h < 5`) "Good evening". Pure helper `getGreeting(date: Date): string` in `src/lib/greeting.ts` (tester vectors: 04:59 evening, 05:00 morning, 11:59 morning, 12:00 afternoon, 17:59 afternoon, 18:00 evening). Re-evaluation: computed on mount of the Feed screen, whenever the app returns to the foreground (`AppState` change to `active`) and on pull-to-refresh; NOT on a timer (a greeting that flips while the user is reading would be jarring). The heading a11y label is the full greeting text.
   - Right: reserved slot (`minWidth 44`), NOT rendered in MVP. Phase 2: notifications bell / search `IconButton`.
 - Phase 2 band below the header (not rendered now): stories row (ref-social "Discover") or category chips (ref-travel). Insert as a sibling after the header inside `ListHeaderComponent`, spacing 16.
 - Cards: `TripCard variant="feed"`, separator 16, list horizontal padding 16, `maxWidth` content 600 centred on wide screens.
 - States (copy from MVP 8.1): first load -> 2 feed skeleton cards in `SkeletonGroup` (the cards are tall); empty -> `EmptyState`; errors -> `ErrorBanner` under the greeting; footer rows unchanged but use `caption` and `textMuted`; pull-to-refresh tint `primary`.
-- The `IconButton` "+" in the header (MVP 8.1) is removed.
+- The `IconButton` "+" in the header (MVP 8.1) is removed; creating a trip is the centre "+" in the tab bar (3.9).
 
 ### 5.2 Profile (`(tabs)/profile` and `user/[username]`)
 
@@ -380,18 +400,14 @@ Structure (one `FlatList`, `numColumns={2}`, `columnWrapperStyle { gap: 12 }`, `
 3. Display name `title` (centred, 1-2 lines, header role), `@username` `body` `textMuted`, bio `body` centred (max width 480, max 3 lines + "more" not needed).
 4. `StatsRow`: Trips, Stops, Photos (3.8).
 5. Actions row (centred, gap 8, each button `flex: 1`, `maxWidth 168`): own profile -> `Button primary md` "Edit profile" and `Button secondary md` "Sign out" (loading while signing out; failure `ErrorBanner` as MVP 7.2). Other profile -> no buttons in MVP. Phase 2: other profile shows `Button primary` "Follow" + `Button secondary` "Message" in the same slot.
-6. `UnderlineTabs` with one tab "Trips" (single-tab header mode). Phase 2: add "Saved" / "Liked" without layout changes.
-7. Grid of `TripCard variant="grid"` (private lock badge on own profile).
+6. `UnderlineTabs` with ONE tab "Trips" (single-tab header mode) on both own and other profiles (owner decision 7: no Public/Private split). Phase 2: add "Saved" / "Liked" without layout changes.
+7. Grid of `TripCard variant="grid"`. On the own profile, private trips show the lock badge (28 px `scrimChip` circle, top-left, label "Private trip."); other users' profiles only ever contain public trips, so no badge.
 
-Cover without a schema change (decision): the cover image is the first `coverUrl` in the already-loaded trips list (newest trip that has a cover; for other users, public trips only; for the own profile, public or private since only the owner sees it). No extra request. Until the list resolves, or if no trip has a cover, show `coverFallbacks[seed(username)]`. The image cross-fades in (200 ms). It changes when a newer trip with a cover is posted - acceptable and documented.
+Cover without a schema change (owner decision 5, final): the cover image is the first `coverUrl` in the already-loaded trips list, i.e. the newest trip that has a cover (for other users, public trips only; for the own profile, public or private since only the owner sees it). No extra request. Until the list resolves, or if no trip has a cover, show `coverFallbacks[seed(username)]`. The image cross-fades in (200 ms). It changes when a newer trip with a cover is posted - accepted and documented. Note: the list is paginated, so use the newest loaded trip with a cover (page 1 is enough; do not fetch more pages for it).
 
-DB change needed later (flag for db-designer, NOT in this refresh): a user-chosen cover requires `profiles.cover_path text null` plus storage policy and a Storage bucket path (e.g. in the public `avatars` bucket under `{uid}/cover-{uuid}.jpg`, same policy pattern as avatars), and an Edit profile control to pick it.
+DB change needed later for a real cover upload (phase 2, NOT in this refresh; the only schema change in this refresh is migration 0003 `get_profile_stats`): a user-chosen cover requires `profiles.cover_path text null` plus storage policy and a Storage bucket path (e.g. in the public `avatars` bucket under `{uid}/cover-{uuid}.jpg`, same policy pattern as avatars), and an Edit profile control to pick it.
 
-Stats data (no schema change; head-only counts, run in parallel with the trip count; show skeleton while `null`):
-- Trips: existing count.
-- Stops: `supabase.from('stops').select('id, trips!inner(owner_id, visibility)', { count: 'exact', head: true }).eq('trips.owner_id', profileId)` (add `.eq('trips.visibility', 'public')` on other users' profiles).
-- Photos: `supabase.from('stop_photos').select('id, stops!inner(trips!inner(owner_id, visibility))', { count: 'exact', head: true })` with the same filters through the embedded path (`stops.trips.owner_id`).
-- RLS already scopes results. Counts exclude cover photos (stop photos only). The coder verifies the embedded filter syntax; if it proves awkward, ask db-designer for one RPC `get_profile_stats(p_profile_id)` returning `{ trips, stops, photos }` (cheaper: 1 request instead of 3). Because this touches user data and network, step 6 also goes to `security`.
+Stats data (owner decision 6, final): ONE RPC `get_profile_stats(p_user_id uuid)` (migration `0003`, written by db-designer, `SECURITY INVOKER` so RLS applies). Called as `supabase.rpc('get_profile_stats', { p_user_id: profileId })`; returns one row `{ trips, stops, photos }` (integers). Semantics: counts respect what the CALLER may see. Other users' profiles show counts of PUBLIC trips (and their stops and stop photos) only; the owner viewing their own profile sees all (public and private). Counts cover stop photos only (not trip cover photos). Hook `useProfileStats(profileId)` returns `{ stats: { trips, stops, photos } | null, isLoading, error, refetch }`; show skeleton while `null`; on error show "-" values plus no banner (stats are non-critical; the trips list keeps its own banner); refetch on pull-to-refresh and after the screen regains focus following a trip create/edit/delete. The coder does not write the SQL and does not start step 6 until migration 0003 is applied; the tab-bar trip count in the grid header uses `stats.trips` (the paginated list count is no longer the source). Because this touches user data and network, step 6 also goes to `security`.
 
 States (copy from MVP 7.x): loading -> header skeleton (cover rect, circle 112, 2 text lines, stats placeholders) + 4 grid skeleton tiles; empty / not found / error as MVP with the restyled components; pull-to-refresh refetches counts, page 1 and `refreshProfile()`.
 
@@ -412,7 +428,7 @@ Stack header: restyled native header (3.10), title "Trip", back; owner actions (
 8. Stops: heading "Stops" + caption count; `StopListItem` restyled: `Card` (radius `lg`, `Shadow.sm`), number badge 32 px (`primary`, `onPrimary` `bold`), name `subheading`, address `caption` `textMuted`, notes `body`; selected = 2 px `primary` border + `primarySoft` fill (transparent 2 px border otherwise); behaviour as MVP 9.2.
 9. Floating "Follow this trip" (`FollowTripButton`): absolute, left/right 16, bottom `max(insets.bottom, 12)`, `Button primary lg fullWidth floating icon="directions"`, over a `fadeToBackground` gradient (height = button + inset + 24, `pointerEvents="none"`). Replaces the MVP bar with a top border. Scroll bottom padding = measured area height + 16 (existing `onLayout` mechanism). No tab bar here.
 
-Distance (`src/lib/geo.ts`, pure, no deps): `haversineKm(a, b)` with Earth radius 6371.0088 km; `routeDistanceKm(stops)` = sum over consecutive stops in sorted order (identical consecutive points contribute 0); needs >= 2 stops else `null`. Formatting `formatDistance(km)`: `< 1` -> metres rounded to the nearest 10 ("850 m"); `< 100` -> one decimal without a trailing ".0" ("12.4 km", "5 km"); `>= 100` -> rounded integer with a "," thousands separator via regex, no `Intl` ("1,138 km"). Unit is km only (see open questions). It is a straight-line sum, so the tile shows "~" and the a11y text says "in a straight line". Test vectors for the tester: (0,0)->(0,1) = 111.2 km; Hanoi (21.0285, 105.8542) -> Ho Chi Minh City (10.8231, 106.6297) about 1,138 km (+/- 5); same point twice = 0 -> "0 m" is never shown: display "-" when the total is under 10 m.
+Distance (`src/lib/geo.ts`, pure, no deps): `haversineKm(a, b)` with Earth radius 6371.0088 km; `routeDistanceKm(stops)` = sum over consecutive stops in sorted order (identical consecutive points contribute 0); needs >= 2 stops else `null`. Formatting `formatDistance(km)`: `< 1` -> metres rounded to the nearest 10 ("850 m"); `< 100` -> one decimal without a trailing ".0" ("12.4 km", "5 km"); `>= 100` -> rounded integer with a "," thousands separator via regex, no `Intl` ("1,138 km"). Unit is km only (owner decision 8: no miles, no locale switching). It is a straight-line sum, so the tile shows "~" and the a11y text says "in a straight line". Test vectors for the tester: (0,0)->(0,1) = 111.2 km; Hanoi (21.0285, 105.8542) -> Ho Chi Minh City (10.8231, 106.6297) about 1,138 km (+/- 5); same point twice = 0 -> "0 m" is never shown: display "-" when the total is under 10 m.
 
 States: loading skeleton mirrors the new layout (cover 4:3, title bar, author row, 3 tile skeletons, text lines, photo tiles, map block, 2 stop cards); unavailable / error / no stops as MVP 9.6 with the restyled components (for no stops the Follow button is disabled and tiles show Distance "-").
 
@@ -429,7 +445,8 @@ Native modal header (3.10). Content on `background`: avatar block centred: `Avat
 
 ### 5.6 Create / edit trip (modals)
 
-Same behaviour as MVP 11. Visual changes only:
+Same behaviour as MVP 11. Visual changes plus ONE functional change, the cover crop ratio (owner decision 11):
+- Cover crop changes from 16:9 to 4:5 (portrait), so the crop matches the 4:5 feed card and avoids cropping at display time. `expo-image-picker` `launchImageLibraryAsync` option `aspect: [4, 5]` (with `allowsEditing: true`; note that Android honours `aspect` in its crop UI while iOS shows a fixed-ratio crop only when `allowsEditing` is on, coder checks the SDK 57 docs). Resize/compress target after picking: 1280 x 1600 px (width 1280, height 1600, via `expo-image-manipulator` in `src/lib/trip-images.ts`, which today uses `aspect: [16, 9]` at line 88 and a matching cover resize constant; update both together), JPEG, same quality as MVP. The cover picker preview box in the form uses aspect ratio 4:5 (width = content width, max height `0.6 * windowHeight`). Trip detail still shows the cover at 4:3 (5.3, `cover` contentFit crops the 4:5 image centred); grid tiles are 3:4; those crops are acceptable. Existing trips with 16:9 covers still render (cover fit); no migration. Edit trip: when the stored cover is 16:9 and the user picks a new one, the new crop is 4:5. Stop photos keep their existing ratio (only the COVER changes).
 - Form sections are `Card`s on `background`: (1) cover + title + description, (2) visibility, (3) stops. Section gap 24, card padding 16, `TextField variant="onCard"`.
 - Cover picker: radius `xl`, empty state dashed 2 px `borderStrong` on `primarySoft` with `image` icon `primary` and label `label`; set state shows the image with ghost buttons below.
 - Visibility rows: radius `lg`, selected = 2 px `primary` border + `primarySoft` fill, 24 px check circle `primary`/`onPrimary`.
@@ -468,7 +485,7 @@ Rule: no empty placeholders, no disabled buttons, no "coming soon" in the MVP UI
 - Contrast >= 4.5:1 for text, >= 3:1 for non-text (icons, borders, focus). Table in 2.2; the scrim rule in 2.7 guarantees text on photos. The coder runs a contrast check on every token pair in both modes and attaches the output.
 - Touch targets >= 44x44: tab items 64 high, FAB 56, glass icon buttons 44, chips with `onPress` get hitSlop, grid tiles and cards are large. Author row on feed cards min height 44.
 - Dynamic Type: caps per 2.3; the feed card switches to the stacked layout at font scale >= 1.5; tab labels cap 1.3 and the bar uses `minHeight` 64 (bar grows if needed); info-tile values shrink to 0.75 before wrapping.
-- Screen reader: tab bar = `tablist` with `tab` items and one `button` ("Create trip"); feed card structure per 3.11 (main button, author button, overlay text hidden); stats row items read as "{n} trips"; info tile row reads as one sentence; decorative gradients, covers on profile and glass are `accessible={false}`; headings keep `accessibilityRole="header"` ("Hi, {name}", section headings, profile name).
+- Screen reader: tab bar = `tablist` with `tab` items and one `button` ("Create trip"); feed card structure per 3.11 (main button, author button, overlay text hidden); stats row items read as "{n} trips"; info tile row reads as one sentence; decorative gradients, covers on profile and glass are `accessible={false}`; headings keep `accessibilityRole="header"` (greeting "Good morning, {name}", section headings, profile name).
 - Reduce Motion and Reduce Transparency honoured (2.8, 2.9). Increase Contrast / high-contrast: borders switch to `borderStrong` on cards when the OS flag is on (optional step 10).
 - Focus order on the trip detail: header actions, cover (image), title, author, tiles (one element), description, photos, map (skipped, one label), stops, Follow button.
 - Never rely on colour alone: private = lock icon + text, errors = icon + text, selected tab = capsule + colour + `selected` state, selected stop = border + fill + state.
@@ -487,11 +504,31 @@ Checked against `package.json` (SDK 57, RN 0.86, React 19.2). Already installed 
 
 So: two small Expo modules, one rebuild, no large libraries (no owner approval needed per CLAUDE.md "large libraries", but flagged). Before coding the coder reads the SDK 57 docs for: `expo-blur` `tint`/`intensity`, `expo-linear-gradient` props, `expo-glass-effect` `GlassView`, `expo-font`/`useFonts`, `expo-router` `Tabs` custom `tabBar` types, `expo-splash-screen` dark config. This document was written without network access to those docs; every API name above marked "check" is unverified.
 
-`app.config.ts` changes (step 10): splash `backgroundColor` `#FAF7F2` with a dark variant `#14110F` (verify the `dark` option in the plugin docs), `android.adaptiveIcon.backgroundColor` `#FAF7F2`, `userInterfaceStyle` stays `automatic`. The app icon and splash image need a brand asset (open question); `AnimatedSplashOverlay` (Expo logo on `#208AEF` blue) should be replaced with a plain ivory/coral overlay or removed.
+### 8.1 Temporary brand assets and `app.config.ts` (step 10; owner decision 10)
+
+Source files (already created, vector, palette `#F2592B` -> `#C73A10` pin, `#1C1815` ink, `#FAF7F2` ivory):
+- `assets/brand/mark.svg`: 1024 x 1024, transparent background, map pin with a transparent hole and a dotted "way" under the tip. All content lies inside the central 676 px (adaptive-icon safe zone).
+- `assets/brand/logo.svg`: 1200 x 360, mark + wordmark "onMyWay" (the "My" in `#C73A10`). The wordmark is live `<text>` in Plus Jakarta Sans Bold: install the font before exporting or convert text to outlines. The logo is for docs, store listing and web; the app screens render the wordmark as themed text (3.13), and the app icon and splash use ONLY the mark.
+
+PNG export (one-off in the polish step; do not add a dependency to `package.json`; use `npx --yes sharp-cli` or Inkscape / `resvg`, whichever is available; commit the PNGs, not the tool). All exports are sRGB PNG:
+
+| Output | Spec | Config |
+|---|---|---|
+| `assets/images/icon.png` (app icon, 1024 x 1024) | Opaque, NO alpha. Canvas filled `#FAF7F2`, `mark.svg` centred at 100% (iOS masks corners itself). Remove `ios.icon: './assets/expo.icon'` from `app.config.ts` so iOS uses this PNG, or keep it only if the `.icon` bundle is rebuilt with the mark (coder decides, prefers removal) | `icon: './assets/images/icon.png'` (unchanged path) |
+| `assets/images/android-icon-foreground.png` (1024 x 1024) | Transparent background, `mark.svg` exported as is (already inside the safe zone) | `android.adaptiveIcon.foregroundImage` |
+| `assets/images/android-icon-monochrome.png` (1024 x 1024) | Transparent background, same shape as the foreground but a single colour: replace the gradient fill and the dots stroke with solid `#000000` (hole stays transparent) | `android.adaptiveIcon.monochromeImage` |
+| Adaptive background | No image: a solid colour. Delete `android-icon-background.png` and the `backgroundImage` key | `android.adaptiveIcon.backgroundColor: '#FAF7F2'` (replaces `#E6F4FE`) |
+| `assets/images/splash-icon.png` (1024 x 1024) | Transparent background, `mark.svg` as is (works on both the ivory and the dark splash because the pin is coral) | `expo-splash-screen` plugin `image` (unchanged path), `imageWidth: 200` (replaces 76) |
+| `assets/images/favicon.png` (48 x 48) | `mark.svg` on transparent | `web.favicon` |
+| `assets/images/mark-white.png` (new, 256 x 256) | Transparent, pin and dots solid `#FFFFFF` (hole transparent). Shown with `expo-image` at 56 px in the auth hero, so `react-native-svg` is not needed | none (imported with `require`) |
+
+Splash colours for the `expo-splash-screen` plugin entry (replaces `#208AEF`): `backgroundColor: '#FAF7F2'` and `dark: { backgroundColor: '#14110F', image: './assets/images/splash-icon.png' }` (coder verifies the `dark` option shape in the SDK 57 plugin docs). `userInterfaceStyle` stays `automatic`. `AnimatedSplashOverlay` (Expo logo on `#208AEF` blue) is replaced by a plain `background`-coloured overlay that fades out over `Duration.normal`, or removed, so that the hand-off from the native splash is seamless. Splash and icon changes need a native rebuild.
 
 ---
 
 ## 9. Migration plan (for the coder)
+
+CHECKPOINT: the owner will STOP after step 4 (tab bar) to rebuild the dev build (`expo-blur` and `expo-linear-gradient` are native) and test on a device. Steps 1-4 must therefore each end with the app fully working end to end (sign in, feed, create trip via the "+", trip detail, profile, sign out) on both platforms, in light and dark, with old screens still using old layouts where their step has not run yet. Do not start step 5 until the owner confirms. Dependent items: migration 0003 (`get_profile_stats`, db-designer) must exist before step 6.
 
 Each step is one commit, ends green (`npx tsc --noEmit`, `npx expo lint`), is followed by `tester` (light + dark, iOS + Android, Dynamic Type 100% and 200%) and, where stated, `security`. Keep old APIs working in every step so the app is shippable between steps.
 
@@ -500,31 +537,15 @@ Each step is one commit, ends green (`npx tsc --noEmit`, `npx expo lint`), is fo
 | 1 | Tokens | Update `Colors` values and add new keys to both modes; `Radius`, `Layout` (inputHeight, gridGap), `TabBar`, `Duration.slow`, `Shadow` + `shadow()` helper, `Gradients`, `FontFamily` constants (names only), custom navigation theme in root `ThemeProvider`, `SystemUI` background. No component code changes except literals -> tokens (`#FFFFFF` -> `onImage`, pick-location shadow). Visual result: new colours everywhere, old layout | coder, tester |
 | 2 | Fonts | Install the font package; `useFonts` + splash gating in `_layout.tsx`; `Typography` gains `fontFamily` and loses `fontWeight`; `ThemedText` mapping + new `heading`/`statValue`; remove every `fontWeight` literal (text-field.tsx x2, themed-text.tsx x5, avatar.tsx, trip-map.tsx, trip-card.tsx, profile-header.tsx, visibility-picker.tsx, place-result-list.tsx, cover-picker.tsx, stop-editor-card.tsx) and the `fontWeight` reads. Test with "Hà Nội, Đà Nẵng, Phở bò" for Vietnamese diacritics, Android bold not doubled, font error path (rename a font to force it) | coder, tester |
 | 3 | Primitives | Install `expo-linear-gradient` + `expo-blur` (rebuild dev build). Restyle `Button`, `TextField`, `Avatar` (+ `xxl`, `ring`), `IconButton` (+ `glass`), `EmptyState`, `ErrorBanner`, `Skeleton`, `Screen` (bg only). New: `Card`, `InfoTile`, `Chip`, `UnderlineTabs`, `Gradient`, `GlassSurface`, `StatsRow`, `useStackScreenOptions`. Add a temporary dev-only gallery route (not committed to main nav) or use Storybook-free manual screens to eyeball them | coder, tester |
-| 4 | Tab bar | `Tabs` + `FloatingTabBar` + FAB + `useTabBarInset`; `Screen tabBarInset` uses it; remove the Feed header "+" later in step 5; verify absolute positioning on both platforms; "+" opens `/trip/new`; a11y roles; reduce-transparency fallback; web file untouched except tokens | coder, tester |
-| 5 | Feed | Greeting header, `TripCard variant="feed"` hero (two-layer clip, scrim, sibling-button structure, large-text stacked fallback, no-cover gradient), skeletons, entrance animation | coder, tester |
-| 6 | Profile | `TripCard variant="grid"`, `ProfileHeader` v2 (cover fallback logic, avatar ring, `StatsRow`, `UnderlineTabs`), stats queries (3 head counts) for own and other profile, grid list; keep `tripCount` prop working until both screens migrate | coder, tester, security (user data, network) |
+| 4 | Tab bar (OWNER CHECKPOINT: dev-build rebuild and device test after this step) | `Tabs` + `FloatingTabBar` + FAB (`primaryBright` fill, `onFab` icon) + `useTabBarInset`; `Screen tabBarInset` uses it; the Feed header "+" is REMOVED in this step too (the FAB replaces it, so there is never a second or missing create entry point); verify absolute positioning on both platforms; "+" opens `/trip/new`; a11y roles; reduce-transparency fallback; web file untouched except tokens | coder, tester |
+| 5 | Feed | Time-of-day greeting header (`getGreeting`, 5.1),  `TripCard variant="feed"` hero (two-layer clip, scrim, sibling-button structure, large-text stacked fallback, no-cover gradient), skeletons, entrance animation | coder, tester |
+| 6 | Profile | `TripCard variant="grid"`, `ProfileHeader` v2 (cover fallback logic, avatar ring, `StatsRow`, `UnderlineTabs`), `useProfileStats` calling RPC `get_profile_stats` (needs migration 0003) for own and other profile, grid list with lock badge on own private trips; keep `tripCount` prop working until both screens migrate | coder, tester, security (user data, network) |
 | 7 | Trip detail | `lib/geo.ts` + `formatDateShort`, info tiles, new order, trip-level photo strip with shared `PhotoViewer`, inline rounded map card, restyled stop cards, floating Follow button + fade, new skeleton | coder, tester |
 | 8 | Auth | `AuthHero`, sheet layout, restyled fields/buttons for sign-in, sign-up, choose-username, profile-load-error | coder, tester |
-| 9 | Remaining screens | Stack header options; Edit profile; trip form (cards, cover picker, visibility, stop cards, progress card); pick-location floating cards; remove `compact` variant and `BottomTabInset` when unused | coder, tester |
-| 10 | Polish | `app.config.ts` splash/icon colours, replace `AnimatedSplashOverlay`, contrast audit script output, high-contrast borders, tab re-tap-to-top, final dark/reduce-motion/Dynamic Type pass | coder, tester |
+| 9 | Remaining screens | Stack header options; Edit profile; trip form (cards, cover picker, visibility, stop cards, progress card); pick-location floating cards; cover crop 4:5 in `trip-images.ts` and the cover picker preview (5.6); remove `compact` variant and `BottomTabInset` when unused | coder, tester |
+| 10 | Polish | Export the PNGs from `assets/brand/*.svg` and update `app.config.ts` splash/icon/adaptive colours (8.1), replace `AnimatedSplashOverlay`, contrast audit script output, high-contrast borders, tab re-tap-to-top, final dark/reduce-motion/Dynamic Type pass | coder, tester |
 
 Compatibility checklist for the coder:
 - `ThemedText` types, `themeColor` prop, `ThemedView type`, `useTheme()` return shape, `Colors` key names, `ThemeColor`, `Spacing` keys, `Radius` keys, `Typography` keys, `Layout.controlHeight`, `Screen` props, `Button`/`TextField`/`Avatar`/`IconButton`/`EmptyState`/`ErrorBanner`/`Skeleton` props: all remain valid. New props are optional.
 - Migrate, do not keep: `Typography.*.fontWeight` and every `fontWeight` literal; `BottomTabInset` (-> `useTabBarInset`); hard-coded `#FFFFFF`/`#000`; teal-specific assumptions (`primary` text on `primarySoft`, avatar initials colour); `TripCard variant="compact"` (-> `grid`); the Feed header "+" `IconButton`.
 - Behaviour that must not change: all MVP copy, hooks, validation, routing, guards, signed-URL handling, pagination, drafts, publish pipeline, Follow flow, maps, picker.
-
----
-
-## 10. Open questions for the owner
-
-1. Coral shade: `#C73A10` (deeper, passes AA with white text) instead of the brighter reference orange. Accept, or prefer a lighter coral with dark text on buttons?
-2. Font: Plus Jakarta Sans (recommended) or Inter?
-3. Navigation: OK to drop the native tab bar for the custom floating bar (loses automatic iOS 26 liquid glass behaviour, gains the centre "+")? Android gets a solid (non-blurred) bar.
-4. Create entry point: OK to move "+" from the Feed header (PLAN decision #6) to the tab bar centre?
-5. Profile cover: OK to use the latest trip cover or a seeded gradient for now, and plan a real cover upload (DB change by db-designer: `profiles.cover_path`) for phase 2?
-6. Profile counts: three head-count queries now, or ask db-designer for a `get_profile_stats` RPC first?
-7. Own-profile tabs: single "Trips" (default) or a useful "Public / Private" split now?
-8. Distance unit: kilometres only, or miles per device locale?
-9. Greeting: fixed "Hi, {first name}" + "Where to next?" (default) or time-of-day greeting?
-10. Brand assets: a logo/app icon and splash image are needed; the wordmark is plain text until then. Auth taglines ("Share your journeys." / "Join the trip.") are new copy to confirm.
-11. Feed card shape: portrait 4:5 (as ref-social, about 1.5 cards per screen) or a shorter 1:1 card?
