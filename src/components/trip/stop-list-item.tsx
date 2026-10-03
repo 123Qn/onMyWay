@@ -1,11 +1,10 @@
-import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
-import { Pressable } from 'react-native';
+import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
 import { CollapsibleText } from './collapsible-text';
 import { PhotoStrip, type StripPhoto } from './photo-strip';
 
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing, shadow } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type StopListItemData = {
@@ -27,8 +26,9 @@ export type StopListItemProps = {
   onLayout?: (event: LayoutChangeEvent) => void;
 };
 
-const BADGE = 28;
+const BADGE = 32;
 
+/** Stop card: `surface` + soft shadow; selected = 2 px primary border + primarySoft fill. */
 export function StopListItem({
   index,
   stop,
@@ -44,6 +44,7 @@ export function StopListItem({
       onLayout={onLayout}
       style={[
         styles.card,
+        shadow(theme, 'sm'),
         {
           backgroundColor: selected ? theme.primarySoft : theme.surface,
           borderColor: selected ? theme.primary : 'transparent',
@@ -70,7 +71,9 @@ export function StopListItem({
           ) : null}
         </View>
       </Pressable>
-      {stop.notes ? <CollapsibleText text={stop.notes} maxChars={140} /> : null}
+      {stop.notes ? (
+        <CollapsibleText text={stop.notes} maxChars={140} tone={selected ? 'onSoft' : 'default'} />
+      ) : null}
       {stop.photos.length > 0 ? (
         <PhotoStrip photos={stop.photos} stopName={stop.name} onRetryPhoto={onRetryPhoto} />
       ) : null}
@@ -85,7 +88,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     borderWidth: 2,
   },
-  header: { flexDirection: 'row', gap: Spacing.two, minHeight: 44, alignItems: 'flex-start' },
+  header: { flexDirection: 'row', gap: Spacing.three - Spacing.two, minHeight: 44, alignItems: 'flex-start' },
   headerText: { flex: 1, gap: Spacing.half },
   badge: {
     width: BADGE,

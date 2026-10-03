@@ -216,7 +216,7 @@ export const TripMap = forwardRef<TripMapHandle, TripMapProps>(function TripMap(
 });
 
 const styles = StyleSheet.create({
-  wrapper: { borderRadius: Radius.lg, overflow: 'hidden' },
+  wrapper: { borderRadius: Radius.xl, overflow: 'hidden' },
   marker: {
     alignItems: 'center',
     justifyContent: 'center',

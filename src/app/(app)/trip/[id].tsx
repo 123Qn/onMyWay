@@ -14,6 +14,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
 
 import type { Edge } from 'react-native-safe-area-context';
 
@@ -21,20 +22,26 @@ import { ThemedText } from '@/components/themed-text';
 import { FollowTripButton } from '@/components/trip/follow-trip-button';
 import { CollapsibleText } from '@/components/trip/collapsible-text';
 import { StopListItem } from '@/components/trip/stop-list-item';
+import { TripPhotoStrip } from '@/components/trip/photo-strip';
 import { TripMap, type TripMapHandle } from '@/components/trip/trip-map';
 import { Avatar } from '@/components/ui/avatar';
+import { Gradient } from '@/components/ui/gradient';
+import { Chip } from '@/components/ui/chip';
+import { InfoTile } from '@/components/ui/info-tile';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Icon } from '@/components/ui/icon';
 import { IconButton } from '@/components/ui/icon-button';
 import { Screen } from '@/components/ui/screen';
 import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
-import { Layout, Radius, Spacing } from '@/constants/theme';
+import { Gradients, Layout, Radius, Spacing, coverFallbackIndex, shadow } from '@/constants/theme';
 import { useSignedUrls } from '@/hooks/use-signed-urls';
 import { useTheme } from '@/hooks/use-theme';
+import { useStackScreenOptions } from '@/hooks/use-stack-screen-options';
 import { useTrip, type TripDetail } from '@/hooks/use-trip';
 import { getAvatarUrl } from '@/lib/avatar-url';
-import { formatDateLong } from '@/lib/format-date';
+import { formatDateLong, formatDateShort } from '@/lib/format-date';
+import { distanceA11yLabel, formatDistance, routeDistanceKm } from '@/lib/geo';
 
 const EDGES: Edge[] = ['left', 'right'];
 const DEFAULT_BAR_HEIGHT = 96;
@@ -47,6 +54,8 @@ export default function TripDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const id = String(params.id ?? '');
   const theme = useTheme();
+  const stackOptions = useStackScreenOptions();
+  const reduceMotion = useReducedMotion();
   const { height: windowHeight } = useWindowDimensions();
   const { trip, status, isOwner, refreshing, refreshError, refresh, retry, setVisibility, remove } =
     useTrip(id);
@@ -177,6 +186,7 @@ export default function TripDetailScreen() {
   const header = (
     <Stack.Screen
       options={{
+        ...stackOptions,
         title: 'Trip',
         gestureEnabled: !deleting,
         headerBackVisible: !deleting,
@@ -245,6 +255,27 @@ export default function TripDetailScreen() {
       url: urls[p.storagePath] ?? null,
     })),
   }));
+  // Trip-level strip: every stop photo, ordered by stop then position.
+  const tripPhotos = trip.stops.flatMap((s) =>
+    s.photos.map((p) => ({
+      id: p.id,
+      path: p.storagePath,
+      url: urls[p.storagePath] ?? null,
+      stopName: s.name,
+    })),
+  );
+
+  const distanceKm = routeDistanceKm(trip.stops);
+  const distanceText = formatDistance(distanceKm);
+  const stopsLabel = trip.stops.length === 1 ? 'Stop' : 'Stops';
+  const publishedShort = formatDateShort(trip.createdAt);
+  const publishedLong = formatDateLong(trip.createdAt);
+  const tilesLabel = [
+    stopCountLabel(trip.stops.length),
+    distanceA11yLabel(distanceKm),
+    `Published ${publishedLong}`,
+  ].join('. ');
+  const coverFallback = Gradients.coverFallbacks[coverFallbackIndex(trip.id)];
 
   return (
     <Screen edges={EDGES} padded={false} keyboardAvoiding={false}>
@@ -252,7 +283,7 @@ export default function TripDetailScreen() {
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: barHeight + Spacing.three }}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: barHeight + Spacing.three }]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -262,54 +293,65 @@ export default function TripDetailScreen() {
           />
         }>
         {refreshError ? (
-          <ErrorBanner message="Could not load this trip." onRetry={() => void refresh()} style={styles.banner} />
+          <ErrorBanner message="Could not load this trip." onRetry={() => void refresh()} style={styles.pad} />
         ) : null}
         {openError ? (
           <ErrorBanner
             message="Could not open maps. No maps app could open this route."
             onDismiss={() => setOpenError(false)}
-            style={styles.banner}
+            style={styles.pad}
           />
         ) : null}
 
-        <View
-          accessible={!!coverUrl}
-          accessibilityRole={coverUrl ? 'image' : undefined}
-          accessibilityLabel={coverUrl ? `Cover photo of ${trip.title}` : undefined}
-          style={[styles.hero, { backgroundColor: theme.primarySoft }]}>
-          {coverUrl ? (
-            <Image
-              source={{ uri: coverUrl, cacheKey: trip.coverPath ?? undefined }}
-              style={StyleSheet.absoluteFill}
-              contentFit="cover"
-              transition={150}
-              cachePolicy="memory-disk"
-              accessible={false}
-              onError={() => {
-                if (!trip.coverPath || coverRetried.current) return;
-                coverRetried.current = true;
-                retryUrl(trip.coverPath);
-              }}
-            />
-          ) : (
-            <View style={styles.heroPlaceholder}>
-              <Icon name="map" size={Layout.iconSize.xl} color="primary" style={styles.dim} />
+        <View style={styles.pad}>
+          <View style={[styles.coverShadow, shadow(theme, 'md'), { backgroundColor: theme.primarySoft }]}>
+            <View
+              accessible={!!coverUrl}
+              accessibilityRole={coverUrl ? 'image' : undefined}
+              accessibilityLabel={coverUrl ? `Cover photo of ${trip.title}` : undefined}
+              style={[styles.cover, { maxHeight: windowHeight * 0.45 }]}>
+              <Gradient {...coverFallback} style={StyleSheet.absoluteFill} />
+              {coverUrl ? (
+                <Image
+                  source={{ uri: coverUrl, cacheKey: trip.coverPath ?? undefined }}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                  transition={reduceMotion ? 0 : 200}
+                  cachePolicy="memory-disk"
+                  accessible={false}
+                  onError={() => {
+                    if (!trip.coverPath || coverRetried.current) return;
+                    coverRetried.current = true;
+                    retryUrl(trip.coverPath);
+                  }}
+                />
+              ) : (
+                <View style={styles.coverPlaceholder}>
+                  <Icon name="map" size={Layout.iconSize.xl} color="onImage" style={styles.dim} />
+                </View>
+              )}
+              {trip.visibility === 'private' ? (
+                <Chip
+                  tone="onImage"
+                  icon="lock"
+                  label="Private"
+                  accessibilityLabel="Private trip"
+                  style={styles.coverBadge}
+                />
+              ) : null}
             </View>
-          )}
+          </View>
         </View>
 
-        <View style={styles.content}>
+        <View style={[styles.pad, styles.head]}>
           <ThemedText type="title" accessibilityRole="header">
             {trip.title}
           </ThemedText>
 
           {trip.visibility === 'private' ? (
-            <View style={[styles.badge, { backgroundColor: theme.background, borderColor: theme.border }]}>
-              <Icon name="lock" size={Layout.iconSize.sm} color="textMuted" />
-              <ThemedText type="caption" themeColor="textMuted">
-                Private. Only you can see this trip.
-              </ThemedText>
-            </View>
+            <ThemedText type="caption" themeColor="textMuted">
+              Private. Only you can see this trip.
+            </ThemedText>
           ) : null}
 
           <Pressable
@@ -324,33 +366,72 @@ export default function TripDetailScreen() {
                 {author.displayName}
               </ThemedText>
               <ThemedText type="caption" themeColor="textMuted" numberOfLines={1}>
-                {`@${author.username} - ${formatDateLong(trip.createdAt)}`}
+                {`@${author.username}`}
               </ThemedText>
             </View>
+            <Icon name="chevron-right" size={16} color="textMuted" />
           </Pressable>
-
-          {trip.description?.trim() ? (
-            <CollapsibleText text={trip.description.trim()} maxChars={240} />
-          ) : null}
         </View>
+
+        <View
+          style={styles.pad}
+          accessible
+          accessibilityLabel={tilesLabel}>
+          <View style={styles.tiles} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+            <InfoTile icon="pin" value={String(trip.stops.length)} label={stopsLabel} />
+            <InfoTile
+              icon="route"
+              value={distanceText === '-' ? '-' : `~${distanceText}`}
+              label="Distance"
+            />
+            <InfoTile icon="calendar" value={publishedShort} label="Published" />
+          </View>
+        </View>
+
+        {trip.description?.trim() ? (
+          <View style={[styles.pad, styles.section]}>
+            <ThemedText type="heading" accessibilityRole="header">
+              About this trip
+            </ThemedText>
+            <CollapsibleText text={trip.description.trim()} maxChars={240} />
+          </View>
+        ) : null}
+
+        {tripPhotos.length > 0 ? (
+          <View style={styles.section}>
+            <View style={[styles.pad, styles.sectionHeader]}>
+              <ThemedText type="heading" accessibilityRole="header">
+                Photos
+              </ThemedText>
+              <ThemedText type="caption" themeColor="textMuted">
+                {tripPhotos.length === 1 ? '1 photo' : `${tripPhotos.length} photos`}
+              </ThemedText>
+            </View>
+            <TripPhotoStrip photos={tripPhotos} onRetryPhoto={retryUrl} />
+          </View>
+        ) : null}
 
         {hasStops ? (
           <>
             <View
-              style={styles.section}
+              style={[styles.pad, styles.section]}
               onLayout={(e) => {
                 routeY.current = e.nativeEvent.layout.y;
               }}>
-              <ThemedText type="subtitle" accessibilityRole="header">
+              <ThemedText type="heading" accessibilityRole="header">
                 Route
               </ThemedText>
-              <TripMap
-                ref={mapRef}
-                stops={mapStops}
-                selectedStopId={selectedStopId}
-                onSelectStop={handleSelectFromMap}
-                height={mapHeight}
-              />
+              <View style={[styles.mapShadow, shadow(theme, 'md'), { backgroundColor: theme.surface }]}>
+                <View style={styles.mapClip}>
+                  <TripMap
+                    ref={mapRef}
+                    stops={mapStops}
+                    selectedStopId={selectedStopId}
+                    onSelectStop={handleSelectFromMap}
+                    height={mapHeight}
+                  />
+                </View>
+              </View>
               {trip.stops.length >= 2 ? (
                 <ThemedText type="caption" themeColor="textMuted">
                   Lines connect the stops in order. They are not a driving route.
@@ -359,12 +440,12 @@ export default function TripDetailScreen() {
             </View>
 
             <View
-              style={styles.section}
+              style={[styles.pad, styles.section]}
               onLayout={(e) => {
                 stopsSectionY.current = e.nativeEvent.layout.y;
               }}>
               <View style={styles.sectionHeader}>
-                <ThemedText type="subtitle" accessibilityRole="header">
+                <ThemedText type="heading" accessibilityRole="header">
                   Stops
                 </ThemedText>
                 <ThemedText type="caption" themeColor="textMuted">
@@ -427,11 +508,13 @@ export default function TripDetailScreen() {
 
 function TripSkeleton({ mapHeight }: { mapHeight: number }) {
   return (
-    <SkeletonGroup style={styles.skeleton}>
-      <View style={styles.hero}>
-        <Skeleton height={400} radius={0} style={StyleSheet.absoluteFill} />
+    <SkeletonGroup style={styles.scrollContent}>
+      <View style={styles.pad}>
+        <View style={[styles.cover, styles.skeletonClip]}>
+          <Skeleton height={400} radius={0} style={StyleSheet.absoluteFill} />
+        </View>
       </View>
-      <View style={styles.content}>
+      <View style={[styles.pad, styles.head]}>
         <Skeleton shape="text" width="70%" height={28} />
         <View style={styles.authorRow}>
           <Skeleton shape="circle" height={40} />
@@ -440,14 +523,26 @@ function TripSkeleton({ mapHeight }: { mapHeight: number }) {
             <Skeleton shape="text" width="30%" />
           </View>
         </View>
+      </View>
+      <View style={[styles.pad, styles.tiles]}>
+        {[0, 1, 2].map((i) => (
+          <Skeleton key={i} height={104} radius={Radius.lg} style={styles.flex} />
+        ))}
+      </View>
+      <View style={[styles.pad, styles.section]}>
         <Skeleton shape="text" />
         <Skeleton shape="text" width="80%" />
       </View>
-      <View style={styles.section}>
-        <Skeleton height={mapHeight} radius={Radius.lg} />
-      </View>
-      <View style={[styles.section, styles.stops]}>
+      <View style={[styles.pad, styles.photoSkeletons]}>
         {[0, 1, 2].map((i) => (
+          <Skeleton key={i} width={120} height={150} radius={Radius.lg} />
+        ))}
+      </View>
+      <View style={styles.pad}>
+        <Skeleton height={mapHeight} radius={Radius.xl} />
+      </View>
+      <View style={[styles.pad, styles.stops]}>
+        {[0, 1].map((i) => (
           <Skeleton key={i} height={96} radius={Radius.lg} />
         ))}
       </View>
@@ -457,27 +552,29 @@ function TripSkeleton({ mapHeight }: { mapHeight: number }) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  dim: { opacity: 0.6 },
+  dim: { opacity: 0.9 },
   headerActions: { flexDirection: 'row', alignItems: 'center' },
   center: { textAlign: 'center' },
-  skeleton: { gap: Spacing.three },
-  banner: { margin: Spacing.three },
-  hero: { width: '100%', aspectRatio: 16 / 9, overflow: 'hidden' },
-  heroPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  content: { padding: Spacing.three, gap: Spacing.three },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: Spacing.one,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.half,
-    borderRadius: Radius.full,
-    borderWidth: 1,
+  scrollContent: { paddingTop: Spacing.two, gap: Spacing.four },
+  pad: { paddingHorizontal: Spacing.three },
+  coverShadow: { borderRadius: Radius.xl },
+  cover: {
+    width: '100%',
+    aspectRatio: 4 / 3,
+    borderRadius: Radius.xl,
+    overflow: 'hidden',
   },
-  authorRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, minHeight: 56 },
-  section: { paddingHorizontal: Spacing.three, gap: Spacing.three, marginBottom: Spacing.three },
+  skeletonClip: { backgroundColor: 'transparent' },
+  coverPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  coverBadge: { position: 'absolute', top: Spacing.three, left: Spacing.three },
+  head: { gap: Spacing.two + Spacing.one },
+  authorRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three - Spacing.one, minHeight: 56 },
+  tiles: { flexDirection: 'row', gap: Spacing.three - Spacing.one },
+  section: { gap: Spacing.three - Spacing.one },
   sectionHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  photoSkeletons: { flexDirection: 'row', gap: Spacing.three - Spacing.one },
+  mapShadow: { borderRadius: Radius.xl },
+  mapClip: { borderRadius: Radius.xl, overflow: 'hidden' },
   stops: { gap: Spacing.three },
   noStops: {
     alignItems: 'center',
