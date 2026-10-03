@@ -16,6 +16,10 @@ export default function AppLayout() {
         name="profile/edit"
         options={{ presentation: 'modal', title: 'Edit profile' }}
       />
+      <Stack.Screen
+        name="pick-location"
+        options={{ presentation: 'modal', title: 'Choose location' }}
+      />
     </Stack>
   );
 }

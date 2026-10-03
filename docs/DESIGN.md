@@ -760,3 +760,556 @@ No loading state is needed; guard against double taps for 500 ms.
 - Photo viewer opens, pages, closes with the button and the Android back key. Failed photos show a placeholder.
 - Screen reader: the map is skipped (one label), every stop and photo is reachable in the list; Dynamic Type 200% keeps the follow bar usable; dark mode map style applies on both platforms.
 - Web: the page renders, the map shows the notice, nothing crashes.
+
+---
+
+## 10. Step 9 - Pick location (`(app)/pick-location.tsx`)
+
+Scope: a modal screen that returns one place `{ lat, lng, name, address }` to its caller, plus the Nominatim client. No stop form here (step 10 consumes the result). `expo-location` and `expo-constants` are already installed and the `expo-location` plugin/permission text is already in `app.config.ts`: no new libraries.
+
+### 10.1 New and changed files
+
+| File | Purpose |
+|---|---|
+| `app/(app)/pick-location.tsx` | The route (10.2, 10.3). Shared by native and web; imports the platform map component |
+| `components/map/location-picker-map.tsx` + `.web.tsx` | Native: `MapView` + fixed pin overlay. Web: notice card (10.9). Same props/ref |
+| `components/map/place-result-list.tsx` | Results overlay list (10.4) |
+| `hooks/use-place-search.ts` | `{ status: 'idle' \| 'loading' \| 'ready' \| 'empty' \| 'error' \| 'rate_limited', results, error, search(q), clear() }`; owns the abort of the previous search |
+| `lib/nominatim.ts` | Client (10.6) |
+| `lib/pick-location-store.ts` | Pending-result store (10.2) |
+| `app.config.ts` (edit) | Add `extra: { nominatimContactEmail: 'quanhuynhvt2004@gmail.com' }` |
+| `components/ui/icon.tsx` (edit) | Add `IconName`s `search` (`magnifyingglass` / `search`), `locate` (`location` / `my_location`), `pin` (`mappin` / `location_on`), `check` (`checkmark` / `check`) |
+| `app/(app)/_layout.tsx` (edit) | Register the screen (10.2) |
+
+### 10.2 Route, registration and result hand-off
+
+Registration (same pattern as `profile/edit`):
+
+```tsx
+<Stack.Screen name="pick-location" options={{ presentation: 'modal', title: 'Choose location' }} />
+```
+
+Native header kept (title + close). iOS modal gets the system close gesture; set `headerLeft` to `IconButton icon="close" accessibilityLabel="Cancel"` calling `router.back()` on both platforms (the default back arrow on Android modals reads as "back", not "cancel"). Android hardware back and iOS swipe-down both cancel without a result. `gestureEnabled` stays default (dragging the map is not a swipe-down on iOS because the sheet gesture only starts from the header).
+
+Opening (caller, step 10):
+
+```ts
+const requestId = randomId();               // lib/random-id.ts
+router.push({ pathname: '/pick-location', params: { requestId, lat, lng } }); // lat/lng optional, strings
+```
+
+Route params (all strings, validated with `Number()` + range check, invalid = ignored):
+
+| Param | Required | Meaning |
+|---|---|---|
+| `requestId` | yes (missing = screen shows `EmptyState` "Something went wrong" + Close) | Key for the result |
+| `lat`, `lng` | no | Initial pin position when editing an existing stop (zoom delta 0.01). Also `name`/`address` are NOT passed; the confirm bar reverse-geocodes lazily (10.7) |
+
+Returning the result - DECISION: a tiny in-memory store keyed by `requestId` in `lib/pick-location-store.ts`:
+
+```ts
+export type PickedLocation = { lat: number; lng: number; name: string; address: string | null };
+export function setPickResult(requestId: string, value: PickedLocation): void; // picker, on confirm
+export function takePickResult(requestId: string): PickedLocation | null;     // caller, reads once and deletes
+```
+
+Module-level `Map`, max 10 entries (drop the oldest). The picker calls `setPickResult` then `router.back()`. The caller reads it in `useFocusEffect(() => { const r = takePickResult(requestId); if (r) addOrUpdateStop(r); })` (the caller keeps `requestId` in a ref/state per open; a new id per open).
+Why not router params on dismiss: params are string-only (needs JSON round-trip and parsing), `router.dismissTo`/`setParams` back onto a form that holds a lot of local state can re-mount or merge params unexpectedly, and typed routes make the caller route's params awkward. A store is typed, has no serialisation, survives the modal unmount, and cancel is simply "no entry". Not persisted: a killed app has nothing to restore, which is correct. Cancel or back never writes an entry, so a stale result cannot appear.
+
+### 10.3 Layout
+
+Root: `Screen padded={false} edges={['left','right']}` (header owns the top; bottom handled by the confirm bar). Children are absolutely layered, bottom to top:
+
+1. `LocationPickerMap` filling the screen (`StyleSheet.absoluteFill`).
+2. Centred pin (inside the map component, `pointerEvents="none"`): 40 px `pin` icon, `primary` fill with a 2 px white halo; the TIP is at the exact map centre, so shift the glyph up by half its height. Under it a 10 px `overlay` ellipse shadow. While the user pans (`onPanDrag`), the pin lifts 8 px (`Duration.fast`); on `onRegionChangeComplete` it drops back. The pin never fires touch events.
+3. Search bar (top): absolute, `top: Spacing.three`, horizontal `Spacing.three`, a `surface` card with `Radius.lg`, 1 px `border` and a small shadow (iOS shadow props, Android `elevation 3`). Row: `search` icon (decorative), `TextInput` (`body`, placeholder "Search for a place", `returnKeyType="search"`, `enterKeyHint="search"`, `autoCorrect={false}`, `autoCapitalize="none"`, `selectionColor = primary`, `onSubmitEditing={submit}`; NO `onChangeText` network calls), min height `Layout.controlHeight.md` 48, and a clear `IconButton icon="close" size="md" accessibilityLabel="Clear search"` shown only when text is non-empty. Input label: `accessibilityLabel="Search for a place"`, hint "Press search on the keyboard to see results".
+4. Results overlay: directly under the search bar (`top = bar bottom + Spacing.two`), same width, `surface` card `Radius.lg`, `maxHeight = min(320, 40% of window height)`, `FlatList` (`keyboardShouldPersistTaps="handled"`). Shown only when status is `loading`, `ready`, `empty`, `error` or `rate_limited`; hidden by close (clear button), by selecting a result, or by tapping the map.
+5. "Use my location" button: `IconButton icon="locate" size="lg" variant="filled"`, absolute, right `Spacing.three`, bottom = confirm bar height + `Spacing.three`; 48x48, a `surface` circle with the same shadow. Label "Use my location". Shows a spinner (`loading`) while locating. Hidden on web.
+6. OSM attribution: caption `textMuted` "© OpenStreetMap contributors" in a `surface` pill (opacity 0.9, padding `Spacing.one`/`Spacing.two`, `Radius.full`), absolute left `Spacing.three`, bottom = confirm bar height + `Spacing.two`. Plain text, not a link in MVP (must stay readable on tiles: the pill guarantees contrast). `accessible`, role `text`. Map tiles on iOS/Android are Apple/Google; the attribution is for the Nominatim data, which is why it sits with the search UI and the confirm bar.
+7. Confirm bar (bottom): absolute, bg `background`, 1 px top border `border`, padding `Spacing.three`, bottom padding `max(insets.bottom, Spacing.three)`. Content: a row with the `pin` icon (`primary`) and a text block: title `bodyStrong` (the label: selected result name, else coordinates "10.77690, 106.70090", else "Move the map to place the pin") and, when known, an address line `caption` `textMuted` (max 2 lines). Beneath it a full-width `Button size="lg"` "Use this location" (icon `check`, `loading` while reverse geocoding on confirm).
+
+Pin-to-label rules (what the bar shows before confirm; NO network on pan):
+- Initially or after panning: the bar shows the coordinates (6 decimals, `lat, lng`) and the helper caption "Address is looked up when you confirm". This keeps panning free of requests.
+- After tapping a search result: the bar shows that result's name and address (already known, so confirm needs NO reverse request).
+- After "Use my location": coordinates (reverse on confirm).
+- Any pan after a result was selected clears the result label and falls back to coordinates (the pin moved: the old name would be wrong). Pan detection: `onRegionChangeComplete` with `isGesture === true` (check the 1.27 docs for the second argument; on Android it is reliable only with `onPanDrag`, so set a `userMoved` ref in `onPanDrag` as the fallback).
+
+Keyboard and safe areas: header = system; map ignores keyboard (it is absolute and not resized: `Screen keyboardAvoiding={false}`); while the keyboard is visible (`Keyboard` show/hide events) the confirm bar, the locate button and the attribution pill are not rendered so they never float above the keyboard, and the results list keeps its max height (so it fits above the keyboard on a small phone: also clamp `maxHeight` to `windowHeight - keyboardHeight - barBottom - Spacing.four`). Submit dismisses the keyboard so the list and the confirm bar are visible together; the confirm bar returns when the keyboard closes. Android: `softwareKeyboardLayoutMode` stays default (resize), which also shrinks `windowHeight`; verify on device and note the result.
+
+Camera: initial region = `lat/lng` params (delta 0.01); else, if foreground permission is ALREADY granted (`getForegroundPermissionsAsync`, no prompt on open), the last known position (`getLastKnownPositionAsync`, no GPS wait; delta 0.05); else a world-ish default `{ latitude: 20, longitude: 0, latitudeDelta: 80, longitudeDelta: 80 }`. The permission prompt appears only after tapping "Use my location". Selecting a result: `animateToRegion` with `latitudeDelta 0.01` (or fit the result `boundingbox` when present and larger, clamped to delta 0.5 max; if the box is tiny use 0.01). Disable `rotateEnabled`, `pitchEnabled`, `toolbarEnabled`; `showsUserLocation` only after permission granted; `showsMyLocationButton={false}` (we have our own); dark mode as in 9.3 (`userInterfaceStyle`, `customMapStyle={mapStyleDark}`); no markers (the pin is an overlay, which stays precise while panning).
+
+Dark mode: all surfaces use theme tokens; the pin keeps `primary` with a white halo (readable on dark tiles); shadows are replaced by the 1 px `border` in dark mode.
+
+Touch targets and accessibility:
+- Every control >= 44 (48 for inputs/primary buttons). Result rows >= 56 px.
+- The map is a gesture surface and not accessible by screen reader: wrapper `accessible`, `accessibilityRole="image"`, label "Map. The pin marks the chosen place. Use the search field or Use my location to choose without dragging the map.", children hidden (as in 9.3). Provide an accessible nudge alternative: none in MVP, the search + GPS buttons are the screen-reader path (stated in the label).
+- Confirm bar text block: `accessibilityLiveRegion="polite"` so a changed label is announced after selecting a result; the button label is "Use this location", hint "Adds this place as a stop".
+- After a search finishes, announce the count with `AccessibilityInfo.announceForAccessibility("{n} places found")` / "No places found".
+- Results rows: role `button`, label "{name}, {address}", hint "Moves the pin to this place".
+
+### 10.4 Results list (`PlaceResultList`)
+
+Props: `status`, `results: PlaceResult[]`, `onSelect(r)`, `onRetry()`. Each row: `pin` icon (`textMuted`), name (`label`, 1 line) and address (`caption`, `textMuted`, 2 lines), padding `Spacing.three` vertical `Spacing.two`, 1 px `border` separators. `limit=5` results at most so no scrolling is usually needed. Status rows (inside the same card, not a separate screen):
+
+| Status | Content |
+|---|---|
+| `loading` | One row with `ActivityIndicator` + "Searching..." (`accessibilityRole="progressbar"`) |
+| `empty` | Icon `search` + "No places found" + caption "Try a different name, or move the map to place the pin yourself." |
+| `error` | Icon `alert` (`danger`) + "Could not search. Check your connection." + ghost `Button sm` "Try again" |
+| `rate_limited` | Icon `alert` + "Search is busy right now. Wait a moment and try again." + ghost `Button sm` "Try again" (button is disabled for 5 s with the countdown not shown, to avoid hammering) |
+
+### 10.5 Screen states
+
+| State | UI |
+|---|---|
+| Idle | Map + pin + confirm bar with coordinates |
+| Searching / results / empty / error / rate-limited | 10.4 overlay; the map stays usable (pan still works and hides the overlay) |
+| Locating | Locate button `loading`; ignores extra presses |
+| Permission denied (foreground) | No system prompt retry loop. A dismissible inline banner (the `ErrorBanner` pattern, `dangerSoft`, but with `onDismiss`) under the search bar: "Location permission is off. You can still search or move the map." with a ghost button "Open settings" -> `Linking.openSettings()`. Shown only after the user tapped the locate button; the map, the search and confirm keep working |
+| Location unavailable / timeout (10 s) | Same banner: "Could not get your location. Try again or move the map." |
+| Confirming | Confirm button `loading`; map gestures and search disabled until done; Android back ignored for the duration (<= 8 s timeout) |
+| Reverse failed | Not blocking: confirm still succeeds (10.7) |
+| Invalid `requestId` | `EmptyState icon="alert"` "Something went wrong" + "Close" |
+
+### 10.6 `lib/nominatim.ts`
+
+Contact email DECISION: `extra.nominatimContactEmail` in `app.config.ts`, read once via `Constants.expoConfig?.extra?.nominatimContactEmail` (expo-constants is installed; the app version comes from `Constants.expoConfig?.version`). One place, shipped in config (it is public by nature: it is sent in a header), and changeable without code edits or a second constants file. Missing value: log a dev-only warning and omit the parenthesised part (never crash). Do not hard-code the address anywhere else.
+
+API (named exports, no default):
+
+```ts
+export type PlaceResult = { lat: number; lng: number; name: string; address: string; boundingBox: [south: number, north: number, west: number, east: number] | null };
+export type NominatimErrorCode = 'network' | 'timeout' | 'rate_limited' | 'blocked' | 'server' | 'invalid_response' | 'aborted';
+export class NominatimError extends Error { code: NominatimErrorCode }
+export function searchPlaces(query: string, opts?: { signal?: AbortSignal }): Promise<PlaceResult[]>;
+export function reversePlace(lat: number, lng: number, opts?: { signal?: AbortSignal }): Promise<{ name: string; address: string } | null>; // null = nothing at that point
+export function defaultNameFromReverse(r: ReverseJson | null, lat: number, lng: number): { name: string; address: string | null };
+```
+
+Requests (base `https://nominatim.openstreetmap.org`, HTTPS only):
+- Search: `GET /search?format=jsonv2&q={encodeURIComponent(q)}&limit=5&addressdetails=1&accept-language={lang}`. Query trimmed, whitespace collapsed, length 2..200 (shorter = return `[]` without a request; longer = cut at 200). No `countrycodes`, no `viewbox` in MVP.
+- Reverse: `GET /reverse?format=jsonv2&lat={lat}&lon={lng}&zoom=18&addressdetails=1&accept-language={lang}`. Coordinates `toFixed(6)`; must be finite and within range, else throw a plain `Error` before any network call (programming error).
+- Headers (native only): `User-Agent: onMyWay/{version} ({email})`, `Accept-Language: {lang}`, `Accept: application/json`. A browser cannot set `User-Agent`: on web skip it and add `&email={email}` to the query instead (Nominatim's documented alternative; the browser sends its own UA/Referer). Only these headers; NEVER send the Supabase token, cookies or any user id.
+- `lang`: device locale from `Intl.DateTimeFormat().resolvedOptions().locale` (e.g. `vi-VN`), fallback `en`. Header `Accept-Language: {locale},en;q=0.5`; query `accept-language` is the same list.
+- Timeout 8 s per request: internal `AbortController` linked to the caller `signal` (abort either -> `aborted` if the caller aborted, `timeout` if the timer fired). `fetch` rejection -> `network`.
+- Error map by HTTP status: 429 -> `rate_limited`; 403 -> `blocked` (UI shows the rate-limited copy; log in dev); 5xx -> `server`; other non-2xx or JSON that is not the expected shape -> `invalid_response`. UI mapping: `rate_limited`/`blocked` -> the rate-limited row; `network`/`timeout`/`server`/`invalid_response` -> the error row; `aborted` -> ignored silently. Reverse never surfaces an error to the user (10.7).
+- Parsing: `lat`/`lon` are strings -> `Number`, drop entries that are not finite. `name` = `item.name` if non-empty else `defaultNameFromReverse`'s logic (below); `address` = `display_name`. `boundingBox` from `boundingbox` (four numeric strings) or null.
+
+Throttle (shared by search and reverse) DECISION: a single serial queue, not rejection. Rationale: a rejected call looks like a user-visible failure for something that only needs 1 s of patience; the user flows here are one call at a time, so the queue stays at most 1-2 deep. Rules: a module-level promise chain guarantees at least 1100 ms between the START of two requests (1 s plus margin; also across retries); the first request after an idle period runs immediately. Queue depth is capped at 2: a newer SEARCH replaces a still-queued older search (the older rejects `aborted`); a reverse never gets replaced. Aborting a queued call removes it without consuming a slot. No automatic retry on 429/5xx (it would worsen load); the user taps "Try again".
+
+Cache: module-level `Map`, LRU, max 50 entries, TTL 10 minutes, keys `s:{lowercase query}:{lang}` and `r:{lat.toFixed(5)},{lng.toFixed(5)}:{lang}` (5 decimals is about 1 m: the same pin position reuses the result). Only successful responses (including an empty search result) are cached; errors never. A cache hit returns without touching the throttle. Not persisted to disk.
+
+### 10.7 Reverse geocoding and default name
+
+- Only on confirm (tap "Use this location") and only when the pin has no known label: (a) after a search result was selected and not moved -> no request; (b) after a pan or GPS -> one `reversePlace(centerLat, centerLng)`.
+- Edit flow: when opened with `lat`/`lng` and the user presses confirm without moving the pin, the same reverse runs (the caller keeps the existing stop name; see the note below).
+- While the request runs the confirm button is `loading`. Timeout 8 s (plus up to 1.1 s queue wait; the total wait the user sees is capped at 9 s: past that, fall back).
+- Derived name (`defaultNameFromReverse`), first non-empty of: `name` (a POI/shop/attraction name, e.g. "Ben Thanh Market"); `address.road` + optional `address.house_number` ("12 Nguyen Hue"); `address.neighbourhood` / `suburb` / `village` / `town` / `city` / `county`; the first comma-separated part of `display_name`. Trim, collapse spaces, max 80 characters. `address` = `display_name`, max 200 characters.
+- Reverse FAILS (any error, timeout, or empty result) -> do not block: return `{ lat, lng, name: 'Dropped pin', address: null }`. The user can rename it in the trip form (step 10). No error dialog; the confirm bar's caption stays unchanged.
+- Result lat/lng are the PIN position (map centre at confirm time, `toFixed(6)` as numbers), or the result's own coordinates when a search result was selected and the pin has not moved.
+- Edit note for step 10: the caller should only replace a stop's `name` with the returned one if the stop's name is empty or still equals its previous auto name; otherwise keep the user's text and update only `lat`, `lng`, `address`. This is the caller's decision, not the picker's.
+
+### 10.8 Search flow
+
+1. User types freely (no requests). Submit (keyboard search key) with trimmed length >= 2: `search(q)`. Length 0-1: do nothing (the field keeps focus; no error).
+2. `search` aborts the previous in-flight search (AbortController), sets `loading`, calls `searchPlaces`. A late response from an older call is discarded (compare a request counter).
+3. Rows tap -> `onSelect`: dismiss the list and keyboard, move the camera (10.3), set the confirm label to the result's name/address, remember the pin as "unmoved".
+4. Pressing submit again with the same text and `ready` results just re-shows the (cached) list.
+5. The submit key is also ignored while status is `loading` (no duplicate queueing).
+
+### 10.9 Web fallback
+
+`react-native-maps` does not run on web. `components/map/location-picker-map.web.tsx` has the same props and ref (no-ops) and renders a bordered `surface` card (same style as `trip-map.web.tsx`): `Icon map xl` + "The map is available in the mobile app. Search for a place instead." The route is the same file: on web there is no pin, no locate button and no panning. The search bar and the result list work (Nominatim supports CORS, `email` query param instead of a User-Agent per 10.6). Tapping a result SELECTS it (row highlighted with `primarySoft` and 2 px `primary` border, `accessibilityState.selected`) and fills the confirm bar; confirm is disabled until a result is selected ("Search for a place to continue" as the confirm bar caption). Confirm returns the selected result; no reverse request is needed on web. Web is not a target; it must only not crash.
+
+### 10.10 Copy
+
+"Choose location", "Cancel", "Search for a place", "Clear search", "Searching...", "No places found", "Try a different name, or move the map to place the pin yourself.", "Could not search. Check your connection.", "Search is busy right now. Wait a moment and try again.", "Try again", "{n} places found", "Use my location", "Location permission is off. You can still search or move the map.", "Open settings", "Could not get your location. Try again or move the map.", "Move the map to place the pin", "Address is looked up when you confirm", "Use this location", "Dropped pin", "© OpenStreetMap contributors", "The map is available in the mobile app. Search for a place instead.", "Search for a place to continue", "Something went wrong", "Close".
+
+### 10.11 Tester checklist
+
+- Open from the stub/dev caller: the modal shows, Cancel and Android back/iOS swipe return with NO result (`takePickResult` returns null); confirm returns `{lat, lng, name, address}` once, a second `take` returns null.
+- Opened with `lat`/`lng`: the pin starts there at street zoom; with no params and permission granted before: starts near the last known position; with no permission: world view and NO permission prompt on open.
+- Typing never sends a request (watch the network log); only the search key does; text of 0-1 chars sends nothing. A second submit while loading is ignored; two quick different searches show only the second result.
+- A result tap moves the pin, the bar shows its name + address, confirm sends NO reverse request; after any pan the bar reverts to coordinates; confirm then sends exactly one reverse request.
+- Panning many times sends zero requests. Requests (search or reverse) are never closer than 1 s apart, including search followed immediately by confirm. Repeating the same search or the same pin position within 10 min hits the cache (no request).
+- Every request carries `User-Agent: onMyWay/1.0.0 (quanhuynhvt2004@gmail.com)` on iOS/Android (inspect with a proxy); no Authorization header; the email appears only in `app.config.ts`.
+- Errors: airplane mode -> "Could not search..." with Try again; simulate 429/403 -> the busy message and a disabled retry for 5 s; no results ("asdkjhqwe") -> "No places found"; reverse failure at confirm -> still returns "Dropped pin" with the exact pin coordinates and `address: null`.
+- Location: grant -> the pin jumps to you; deny -> banner with Open settings, map/search/confirm still work; deny once then reopen: no repeated prompts; GPS off -> "Could not get your location".
+- Layout: the pin tip is exactly at the map centre (compare the confirm coordinates with a known landmark); the confirm bar clears the home indicator; with the keyboard open the bar/locate/attribution are hidden and the result list is not covered; the attribution text is always visible and readable on light and dark tiles.
+- Dark mode: map style, search card, results, banner, bar all themed; Dynamic Type 200%: no clipped text, the bar grows, the button stays tappable.
+- Screen reader (VoiceOver/TalkBack): map skipped with its single label, search field, clear, results, locate, confirm all reachable with correct labels; result count announced; the changed confirm label is announced.
+- Targets: all controls >= 44x44.
+- Web: the page renders, search works, a result must be selected before confirm, returns the result, no crash.
+- Security: no logging of queries or coordinates in production builds; HTTPS only; query is URL-encoded; the picker never sends data to Supabase.
+
+---
+
+## 11. Step 10 - Create / edit trip
+
+Scope: the real `trip/new` form, the new `trip/[id]/edit` form, local drafts (new trip only), photo pick/compress, the publish pipeline (insert, upload, `save_trip_stops`, visibility) and the edit-save pipeline. Supersedes: PLAN 1.5 (sticky Publish footer, drag handle, undo snackbar, `reorder_stops` RPC) and PLAN 2.9 "stops in one insert, photos in one insert" (replaced by the `save_trip_stops` RPC from `0002_save_trip_stops.sql`), and DESIGN 9.5 "Edit trip is DEFERRED". No new libraries: `@react-native-async-storage/async-storage`, `expo-image-picker`, `expo-image-manipulator`, `expo-image` are installed. `expo-file-system` and `expo-crypto` are NOT installed and not needed (see 11.9, 11.12). Before coding, check the SDK 57 docs for `expo-image-picker` option names (`allowsMultipleSelection`, `selectionLimit`, `orderedSelection`, `allowsEditing`, `aspect`) and `expo-image-manipulator` (`ImageManipulator.manipulate` pattern as in `profile/edit.tsx`).
+
+### 11.1 Decisions (summary)
+
+| Topic | Decision |
+|---|---|
+| Layout | One scrolling screen, shared by create and edit (`TripForm`); no wizard |
+| Presentation | Both routes `fullScreenModal`, `gestureEnabled: false` (a long scrolling form + nested pick-location modal + iOS sheet swipe-down would fight; Cancel and the guard cover leaving) |
+| Primary action | Header right text button ("Publish" / "Save"), same pattern as Edit profile; plus a full-width `Button` at the end of the form for the create flow (users finish at the bottom). No sticky footer (it floats above the keyboard) |
+| Reorder | MOVE UP / MOVE DOWN buttons only. No drag in MVP (11.5) |
+| Visibility | Two-option radio group "Public" / "Private", default Public on create; edit shows the current value |
+| Drafts | Local, new trip only, autosave. NO drafts for edit; edit has only an unsaved-changes confirm |
+| Delete trip | Not duplicated here. It stays in the trip detail owner menu |
+| Edit entry | Pencil `IconButton` ("Edit trip") next to "Trip options" in the detail header (11.14) |
+| Stop delete | Confirm only when the stop has content; NO undo snackbar in MVP |
+| Cover | Optional, cropped 16:9 at pick time |
+| Ids | The client generates RFC 4122 v4 UUIDs for trip, stops and photos (11.12) |
+
+### 11.2 Files
+
+| File | Purpose |
+|---|---|
+| `app/(app)/trip/new.tsx` (replace placeholder) | Create screen: header, draft restore, `useTripForm`, publish flow, leave guard |
+| `app/(app)/trip/[id]/edit.tsx` (new) | Edit screen: `useTrip(id)` load, ownership check, form init, save flow, leave guard. A file `trip/[id].tsx` and a folder `trip/[id]/` coexist in Expo Router; the coder verifies typed routes accept `/trip/${id}/edit` and keeps this path |
+| `app/(app)/_layout.tsx` (edit) | Registrations (11.3) |
+| `components/trip-form/trip-form.tsx` | Presentational scroll body. Props: `mode: 'create' \| 'edit'`, `form`, `actions` (from the hook), `errors`, `remoteUrls: Record<string, string>` (signed URLs for existing photos), `disabled` (while saving), `onAddStop`, `onChangeLocation(stopId)`, `scrollRef`, `banner` node. No data fetching |
+| `components/trip-form/cover-picker.tsx` | Cover block (11.4) |
+| `components/trip-form/visibility-picker.tsx` | Radio group (11.4) |
+| `components/trip-form/stop-editor-card.tsx` | One stop card, wrapped in `React.memo`, callbacks take the stop id (11.4) |
+| `components/trip-form/stop-photo-strip.tsx` | Horizontal photo tiles + add tile (11.4) |
+| `components/trip-form/publish-progress.tsx` | Blocking overlay with steps, progress and failure actions (11.8); also used with `variant="save"` for edit (11.10) and `variant="discard"` |
+| `hooks/use-trip-form.ts` | `useReducer` form state + actions + derived (`errors`, `isEmpty`, `dirty`) |
+| `hooks/use-trip-draft.ts` | Load once, debounced autosave, flush on background, clear |
+| `hooks/use-unsaved-guard.ts` | `beforeRemove` listener shared by both screens (11.7) |
+| `lib/trip-form.ts` | Types, `emptyForm()`, `normalizeForm`, `validateForm`, `toPayload`, limit constants |
+| `lib/trip-drafts.ts` | AsyncStorage `loadDraft(uid)`, `saveDraft(uid, draft)`, `clearDraft(uid)` |
+| `lib/trip-images.ts` | `pickStopPhotos(maxCount)`, `pickCover()`, `compressToJpeg` (11.9) |
+| `lib/trip-storage.ts` | Move `listAll` out of `use-trip.ts`; add `removePaths(paths)` best effort, `removePrefix(uid, tripId)`, `uploadJpeg(path, uri)` |
+| `lib/trip-publish.ts` | `publishTrip`, `discardPublishedTrip` (11.8) |
+| `lib/trip-save.ts` | `saveTripEdits` (11.10) |
+| `lib/trip-errors.ts` | `classifyTripError(e)` -> `'network' \| 'limit' \| 'not_owner' \| 'invalid' \| 'photo_missing' \| 'unknown'` (11.11) |
+| `lib/random-id.ts` (edit) | Add `randomUuid()` (11.12) |
+| `lib/trip-events.ts` (edit) | Add `{ type: 'created'; id }` and `{ type: 'updated'; id }` |
+| `hooks/use-trip.ts` (edit) | Subscribe to `updated` for its id and call `refresh()`; import `listAll` from `lib/trip-storage.ts` |
+| Feed / profile list hooks (edit) | On `created` and `updated`, refresh the first page (same mechanism they already use for `removed` / `visibility`) |
+| `components/ui/icon.tsx` (edit) | Add `arrow-up` (`arrow.up` / `arrow_upward`), `arrow-down` (`arrow.down` / `arrow_downward`), `trash` (`trash` / `delete`), `edit` (`pencil` / `edit`); `pin` (`mappin` / `location_on`) if step 9 has not added it |
+| `components/ui/screen.tsx` (edit) | Optional `scrollRef?: Ref<ScrollView>` forwarded to the internal `ScrollView` (needed for scroll-to-error and scroll-to-new-stop) |
+| `app/(app)/trip/[id].tsx` (edit) | Pencil button (11.14) |
+
+### 11.3 Routes and header
+
+Registration in `(app)/_layout.tsx` (replace the `trip/new` entry, remove `headerShown: false`):
+
+```tsx
+<Stack.Screen name="trip/new" options={{ presentation: 'fullScreenModal', title: 'New trip', gestureEnabled: false }} />
+<Stack.Screen name="trip/[id]/edit" options={{ presentation: 'fullScreenModal', title: 'Edit trip', gestureEnabled: false }} />
+```
+
+Header (set from each screen with `<Stack.Screen options>` like `profile/edit.tsx`; reuse/extract its `HeaderTextButton` into `components/ui/header-text-button.tsx`):
+- Left: "Cancel" (text button, `router.back()`, which triggers the guard in 11.7). Disabled while a save/publish runs.
+- Right: create "Publish", edit "Save" (bold, `primary`). Create: always enabled when not busy (validation runs on press, per 6.2). Edit: enabled only when `dirty && !busy`. While busy shows a spinner in place of the label.
+- Android hardware back: goes through `beforeRemove` (guard). While busy it is blocked.
+- Body: `Screen scroll edges={['left','right','bottom']}`, `padded` default, `keyboardAvoiding`. Vertical gap between sections `Spacing.four`, inside a section `Spacing.three`.
+
+After create success: `router.replace(`/trip/${tripId}`)`. The modal is replaced by a normal pushed detail, so Back from the detail returns to the previous screen (Feed or Profile), not to the form. After edit success: `router.back()` (the detail refreshes through the `updated` event).
+
+### 11.4 Form layout (top to bottom)
+
+Create and edit are identical except where noted.
+
+1. Draft note (create only, after the first autosave): `caption` `textMuted` "Draft saved on this device". Not a live region.
+2. Banner slot: `ErrorBanner` (save/publish error, photo permission, partial publish notice). Announced when it appears.
+3. Cover (`CoverPicker`): a 16:9 box, full content width, `Radius.lg`, overflow hidden.
+   - Empty: bg `primarySoft`, 2 px dashed `borderStrong` border, centred `image` icon (`primary`) + "Add cover photo" (`label`). The whole box is a button (label "Add cover photo", hint "Opens your photo library").
+   - Set: image (`contentFit="cover"`). Below it a row with ghost `sm` buttons "Change photo" and "Remove photo". Tapping the image also changes it. Local picks use the local uri; existing covers use the signed URL.
+   - Processing a pick: the box shows a spinner on `overlay` until the file is compressed.
+4. Title: `TextField` label "Trip title", `maxLength 120`, `showCounter`, `autoCapitalize="sentences"`, `returnKeyType="next"` -> focuses Description. Error "Enter a title for your trip." (no "required" marker; the submit error is enough).
+5. Description: `TextField multiline`, label "Description (optional)", `maxLength 5000`, `showCounter`, helper "What is this trip about?". Empty saves as `null`; trim and collapse 3+ newlines to 2 (same helper as bio in `profile/edit.tsx`; extract to `lib/trip-form.ts`).
+6. Visibility (`VisibilityPicker`): label "Who can see this trip" (`label`), two stacked option rows, each a `Pressable` >= 56 px, `accessibilityRole="radio"`, `accessibilityState={{ selected }}`, inside a container with `accessibilityRole="radiogroup"`. Row: no leading icon; title `bodyStrong` + caption `textMuted`, and a trailing 24 px circle (selected = filled `primary` with a `check` glyph in `onPrimary`; unselected = 2 px `borderStrong` ring). Selected row has 2 px `primary` border and `primarySoft` bg; unselected 2 px transparent border (no layout shift).
+   - "Public" / "Everyone on onMyWay can see this trip." (default on create)
+   - "Private" / "Only you can see this trip."
+7. Stops section: header row "Stops" (`heading`, header role) + caption "{n} of 20". Then:
+   - Empty (0 stops): bordered `surface` block, `map` icon, "No stops yet", message "Add the places you will visit, in order.", primary `Button` "Add the first stop".
+   - Cards (`StopEditorCard`), plain `View` map (max 20; not a FlatList: it sits in the ScrollView), gap `Spacing.three`, `key = stop.id` (stable, so inputs keep state and focus when a card moves).
+   - Below the cards (>= 1 stop): `Button variant="secondary" icon="plus" fullWidth` "Add stop". At 20 stops: `disabled` and caption `textMuted` "You've reached the limit of 20 stops." (keeps the button visible so the limit is explained).
+   - Submit error (no stops): inline caption in `danger` with `alert` icon: "Add at least one stop to publish." (live region `polite`).
+8. Bottom action (create only): `Button size="lg" fullWidth` "Publish trip", with `loading` while publishing; under it a ghost `sm` button "Save draft and close" (flushes the draft, then leaves without the prompt). Edit: `Button size="lg" fullWidth` "Save changes". Bottom padding `Spacing.six`.
+
+#### Stop card (`StopEditorCard`)
+
+Card: bg `surface`, `Radius.lg`, padding `Spacing.three`, gap `Spacing.three`. Props: `stop`, `index` (0-based), `count`, `errors`, `remoteUrls`, `disabled`, and callbacks `onChange(id, patch)`, `onMove(id, -1 | 1)`, `onDelete(id)`, `onChangeLocation(id)`, `onAddPhotos(id)`, `onRemovePhoto(id, photoId)`, `onLayout`.
+
+- Row 1 (header): number badge (28 px circle, `primary` bg, `onPrimary` bold number, same as the detail list and map marker), text "Stop {n}" (`subheading`, flex 1, header role), then three `IconButton`s (44x44 each, `plain`): `arrow-up` "Move stop {n} up" (disabled on first), `arrow-down` "Move stop {n} down" (disabled on last), `trash` "Delete stop {n}" (`color="danger"`). With a 320 px width this row is 28 + 3 x 44 + gaps: allowed; if Dynamic Type wraps the title, the title wraps, buttons stay.
+- Name: `TextField` label "Stop name", `maxLength 120`, counter only when length >= 100, `autoCapitalize="words"`, `returnKeyType="next"` -> focuses Notes. Error "Enter a name for this stop."
+- Location row: `Pressable` block (>= 56 px) showing `pin` icon (`primary`), address (`body`, 2 lines) or, when `address` is null, the coordinates "10.77690, 106.70090" (never both), and a trailing ghost `sm` `Button` "Change location" (the whole row is also pressable with the same label). Opens pick-location with `lat`, `lng` params (11.6).
+- Notes: `TextField multiline`, label "Notes (optional)", `maxLength 5000`, counter only when length >= 4500, `autoCapitalize="sentences"`. Empty saves as `null`.
+- Photos: label row "Photos" (`label`) + caption "{n}/5" right-aligned, then `StopPhotoStrip`.
+
+`StopPhotoStrip`: horizontal `ScrollView` (no snap), tile 96x96, `Radius.md`, gap `Spacing.two`, `expo-image` (`contentFit="cover"`, `cacheKey` = path when remote). Each photo tile = image + a 44x44 hit-area close `IconButton` in the top-right corner (visual 24 px dark `overlay` circle with white `close` glyph, hit area 44 via the button box, the tile padding keeps it inside the tile). Tile accessibility: the image is `accessible` role `image`, label "Photo {i} of {m} for {stop name or 'stop {n}'}"; the close button is a sibling focus target "Remove photo {i}". A failed/missing file shows an `image` icon placeholder with caption "Unavailable" and a `danger` border; the same remove button works. Add tile (shown only when `photos.length < 5`): 96x96 dashed `borderStrong`, `plus` icon + "Add photo" (`caption`), role button, label "Add photo to stop {n}", hint "You can add {remaining} more". While photos are being compressed, the add tile is replaced by a spinner tile and presses are ignored. No photo reordering and no photo viewer inside the form (remove and re-add; the detail screen has the viewer).
+
+### 11.5 Reorder decision: move up / down only
+
+`react-native-draggable-flatlist` is a vertical virtualized list that must own the vertical scroll. The form is one `ScrollView` with a cover, three inputs and photo strips; nesting a draggable list inside it breaks scrolling and gesture handoff, and making the whole form the `DraggableFlatList` (header and footer components) means 20 tall cards with focused `TextInput`s, keyboard insets, and a drag handle that must start a pan over a long card inside a scroll: fragile on both platforms and hard to make accessible. With at most 20 stops, two 44 px buttons per card are reliable, work with VoiceOver/TalkBack and keyboards, and need no gesture dependency. The library stays installed but unused; drag reorder is deferred (post-MVP, only if user feedback asks for it).
+
+Behaviour:
+- `moveStop(id, dir)` swaps the stop with its neighbour in `form.stops`. Numbers, labels and the map order derive from the index, so they update at once.
+- Visual: `LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)` before the state change, skipped when `AccessibilityInfo.isReduceMotionEnabled()` is true (cache the value on mount). On Android enable via `UIManager.setLayoutAnimationEnabledExperimental` only if the docs for the installed RN still require it; otherwise no animation is acceptable.
+- Keep the moved card in view: parent records each card's y with `onLayout` (same pattern as the detail screen) and calls `scrollTo({ y: cardY - Spacing.three, animated: true })` after the update settles (next frame).
+- Announce: `AccessibilityInfo.announceForAccessibility("Stop moved to position {n} of {m}")`.
+- Disabled (not hidden) at the ends, with `accessibilityState.disabled`.
+
+### 11.6 Add and change location
+
+State: `pendingPickRef = useRef<{ requestId: string; target: { kind: 'add' } | { kind: 'change'; stopId: string } } | null>(null)`.
+
+- Add: `requestId = randomId()`; `pendingPickRef.current = { requestId, target: { kind: 'add' } }`; `router.push({ pathname: '/pick-location', params: { requestId } })`. Disabled at 20 stops and while busy.
+- Change: same with `target: { kind: 'change', stopId }` and params `lat`, `lng` as strings.
+- Result: in the screen, `useFocusEffect(useCallback(() => { const p = pendingPickRef.current; if (!p) return; const r = takePickResult(p.requestId); pendingPickRef.current = null; if (!r) return; ... }, []))`. Cancel leaves no entry, so nothing changes.
+  - Add: if `stops.length >= 20` ignore (defensive). Append `{ id: randomUuid(), name: r.name, autoName: r.name, notes: '', lat, lng, address: r.address, photos: [] }`, then scroll to the new card and announce "Stop {n} added". Do not focus a field (it would raise the keyboard on return).
+  - Change: update `lat`, `lng`, `address`; replace `name` (and `autoName`) with `r.name` ONLY if `name.trim() === ''` or `name === autoName`; otherwise keep the user's text (DESIGN 10.7 note). If the name did not change, keep `autoName` as is.
+- `autoName` is part of form state and the draft; it is not sent to the server.
+
+### 11.7 Leaving, drafts and the unsaved-changes guard
+
+`hooks/use-unsaved-guard.ts` registers `navigation.addListener('beforeRemove', ...)` like `profile/edit.tsx`, with refs `leavingRef` (set before a deliberate `router.back()/replace`) and `busyRef` (blocks while saving/publishing: `e.preventDefault()` and nothing else). It receives a `mode` and the callbacks below.
+
+#### Create (new trip)
+
+Dirty = form is not empty (`isEmpty` = no trimmed title, no trimmed description, no cover, no stops). An empty form leaves silently and removes any saved draft. Otherwise `Alert.alert('Save this trip as a draft?', 'You can finish it later.', [Keep editing (cancel), Discard (destructive), Save draft])` (three buttons: fine on Android).
+- Save draft: flush the draft immediately (do not wait for the debounce), set `leavingRef`, dispatch the original action.
+- Discard: if the draft has a `tripId` (publish was started) -> `discardPublishedTrip` with the `discard` overlay (11.8); on success clear the draft and leave; on failure stay and show the banner "Could not discard this trip. Please try again." with Retry. If no `tripId`: clear the draft and leave.
+- Keep editing: stay.
+- "Save draft and close" button in the form runs the Save draft path without the prompt.
+
+Autosave (`use-trip-draft.ts`): on any form change, debounce 800 ms then `saveDraft`. An empty form removes the draft instead. Flush immediately on `AppState` change to `inactive`/`background` and on Save draft. Persist the publish bookkeeping immediately (not debounced) whenever the `tripId` is created or a photo `path` is assigned (11.8). Write failures (storage full) are ignored in the UI (dev log only). The first successful save sets the "Draft saved on this device" note.
+
+Draft storage: key `onmyway:trip-draft:v1:${userId}` (per user; sign-out does NOT clear it, per 6.6). One draft per user. Value:
+
+```ts
+type TripDraft = { v: 1; savedAt: string; tripId: string | null; form: TripFormValues };
+```
+`TripFormValues` (also the reducer state): `{ title, description, visibility, cover: CoverValue | null, stops: StopValue[] }`, `StopValue = { id, name, autoName, notes, lat, lng, address, photos: PhotoValue[] }`, `PhotoValue = { id, uri: string | null, path: string | null }`, `CoverValue = { id, uri: string | null, path: string | null }`. `uri` = local compressed file; `path` = storage path (set once uploaded, or for existing server photos). The persisted form therefore already carries the uploaded paths, which is how a retry skips finished uploads. Parse errors, `v !== 1`, or a draft whose `userId` key does not match are ignored and removed.
+
+Resume on open (create only): while the draft loads (a few ms) show the form skeleton (cover box + 3 field skeletons in a `SkeletonGroup`). If a non-empty draft exists: `Alert.alert('Resume your draft?', "You have an unfinished trip{ \"title\"}, saved {relative time}.{ It was partly published.}", [Discard draft (destructive), Resume])`, `cancelable: false`. Resume loads the form (and `tripId`). Discard draft: same cleanup as Discard above. Corrupt or empty draft: start fresh with no prompt.
+
+Local photo files live in the cache directory and the OS may purge them. A draft photo whose file is gone shows the "Unavailable" tile (image `onError`) and fails the upload with `photo_missing` (11.11); the user removes it. No file-system library is added to pre-check.
+
+Partly published notice (draft has `tripId`): `ErrorBanner` (no retry) "This trip was partly published and is still private. Publish to finish, or discard it."
+
+#### Edit
+
+No drafts. `dirty` = `JSON.stringify(normalize(form)) !== JSON.stringify(normalize(initial))` where `initial` is captured once from the loaded trip (do not re-initialise when `useTrip` refreshes; guard with a ref). Dirty and leaving: `Alert.alert('Discard changes?', 'You have unsaved changes.', [Keep editing (cancel), Discard (destructive)])` (same copy as 7.5). Discarding also deletes files uploaded by a failed save attempt (11.10). Not dirty: leave silently.
+
+### 11.8 Photos: pick and compress (`lib/trip-images.ts`)
+
+Reuses the avatar pattern (`launchImageLibraryAsync` then `ImageManipulator.manipulate(...).resize(...).renderAsync()` then `saveAsync({ format: SaveFormat.JPEG, compress: 0.8 })`).
+
+| Kind | Picker options | Processing |
+|---|---|---|
+| Stop photos | `mediaTypes: ['images']`, `allowsMultipleSelection: true`, `selectionLimit: 5 - current`, `orderedSelection: true` (iOS), `quality: 1` | per asset, sequentially: if `max(width, height) > 1600` resize the long side to 1600 (keep aspect), else no resize; JPEG 0.8. Output is `image/jpeg` only |
+| Cover | `mediaTypes: ['images']`, `allowsEditing: true`, `aspect: [16, 9]`, single (editing and multi-select are mutually exclusive), `quality: 1` | resize width to 1600 (1600x900), JPEG 0.8 |
+
+Rules:
+- If the picker returns more assets than free slots (some Android pickers ignore the limit), keep the first `remaining` and show a banner "Only {n} photos were added. A stop can have up to 5."
+- Each processed photo is appended as `{ id: randomUuid(), uri, path: null }`. If some assets fail to process: add the successful ones and show "Some photos could not be added."; if all fail "Could not open your photo. Please try another." (6.x copy reuse).
+- Permission denied (`getMediaLibraryPermissionsAsync` DENIED, as in `profile/edit.tsx`): banner "Allow photo access in Settings to add photos." with ghost button "Open settings" (`Linking.openSettings()`). On Android 13+ the system photo picker needs no permission.
+- Expected size 200-700 KB per photo, far under the 10 MB bucket limit; JPEG only so the MIME rule holds.
+- Replacing/removing a photo or cover whose `path` was already uploaded in this session (a failed publish left it in Storage) deletes that file best effort at once (`removePaths`), so it is not orphaned. Removing a photo that exists on the server (edit) only removes it from the form; the server file is deleted after a successful save (11.10).
+
+### 11.9 Create / publish pipeline (`lib/trip-publish.ts`)
+
+```ts
+export type PublishStep = 'trip' | 'photos' | 'stops' | 'finish';
+export type PublishProgress = { step: PublishStep; done: number; total: number }; // photos: x of y
+export async function publishTrip(args: {
+  userId: string; tripId: string; form: TripFormValues;
+  onProgress(p: PublishProgress): void;
+  onFormPatch(patch: { photoPaths: Record<string, string>; coverPath?: string }): void; // persist assigned paths into form + draft immediately
+  signal?: { cancelled: boolean };
+}): Promise<{ ok: true } | { ok: false; step: PublishStep; kind: ErrorKind; photoId?: string }>;
+export async function discardPublishedTrip(userId: string, tripId: string): Promise<boolean>;
+```
+
+Sequence (authoritative, from db-designer):
+1. Local validation (11.11). Failure: show inline errors, scroll to the first, abort (no overlay).
+2. Create `tripId = randomUuid()` on first publish and persist it in the draft BEFORE the insert. Insert `trips` row `{ id: tripId, owner_id, title, description, visibility: 'private' }`. Error `23505` = already exists (retry): continue. Other errors map via 11.11.
+3. Upload the cover (if `path` is null) and every photo with `path === null`, sequentially, to `trip-photos/{userId}/{tripId}/{uuid}.jpg` (`contentType: 'image/jpeg'`, `upsert: false`). Read the local file first (`fetch(uri).arrayBuffer()` as in avatars); a read failure = `photo_missing` for that photo (not a network error). After each successful upload call `onFormPatch` so the new `path` is in state and in the draft at once. Progress `done/total` counts only items that still needed upload on this attempt (finished ones from earlier attempts are skipped, and the bar starts at 0 of the remaining). Then `update trips set cover_path` when a cover exists (skip if already equal).
+4. `rpc('save_trip_stops', { p_trip_id, p_stops })` once, `p_stops` = `form.stops.map` -> `{ id, name, lat, lng, address, notes, photos: [{ id, storage_path }] }` (client-generated ids; array order = positions). The returned removed paths are ignored here (a create has none).
+5. `update trips set visibility = form.visibility` (check 0 rows as a failure `not_owner`; a Private choice makes this a no-op but still run it to keep the code path single).
+6. Best-effort sweep: `listAll(prefix)` and remove files not referenced by the cover or photo paths (catches uploads whose response was lost on a retry). Failures ignored.
+7. `clearDraft`, set `leavingRef`, emit `{ type: 'created', id }`, `router.replace('/trip/' + tripId)`.
+
+Errors keep the draft and `tripId`. Retry re-runs from step 2 and skips what is done (idempotent by design).
+
+`discardPublishedTrip`: `removePrefix` (list + remove all objects under `{userId}/{tripId}/`; if listing or removal fails return false and keep the row so a retry still finds the files), then delete the `trips` row (select to detect 0 rows; 0 rows = already gone = success). Caller then clears the draft.
+
+#### Publish progress UI (`PublishProgress`)
+
+A blocking overlay in the screen (same pattern as the delete overlay in `[id].tsx`: absolute, `overlay` scrim, `onStartShouldSetResponder`, `accessibilityViewIsModal`), with a centred `surface` card (`Radius.lg`, padding `Spacing.four`, max width 360).
+- Title `heading` "Publishing your trip" (header role).
+- Step list (rows >= 44 px, status icon + label + trailing detail):
+  1. "Creating your trip"
+  2. "Uploading photos" with trailing "{x} of {y}" and a 6 px determinate bar (`primary` on `border`); hidden when there is nothing to upload
+  3. "Saving stops"
+  4. "Finishing up"
+  - Status icon: pending = empty 20 px circle (`borderStrong`), active = `ActivityIndicator`, done = `check` in `success`, failed = `alert` in `danger`. Never colour alone: the failed row also gets its text in `danger` and the message below.
+- Live region: `accessibilityLiveRegion="polite"` on a visually hidden status text updated on STEP changes only ("Uploading photos", "Saving stops", ...), not on every photo (photo count is in the bar's `accessibilityValue={{ min: 0, max: total, now: done }}`).
+- Reduce motion: no animated bar fill (set width directly).
+- Failure state (same card, list stays so the user sees where it stopped): message under the list (11.11 copy), then buttons stacked full width:
+  - `Button primary` "Retry" (hidden for `limit` and `invalid` errors, where retrying cannot help) -> resumes at the failed step.
+  - `Button secondary` "Back to editing" -> closes the overlay, keeps the draft and the private half-created trip.
+  - `Button ghost` (danger text via `destructive` variant `sm`) "Discard trip" -> `Alert` "Discard this trip?" / "This deletes the partly published trip and its uploaded photos from your account." [Cancel, "Discard" destructive] -> `discard` overlay variant ("Discarding..." spinner), then clear the draft and leave; failure -> back to the failure state with "Could not discard this trip. Please try again."
+- Android back while running is blocked; in the failure state it behaves as "Back to editing". The header buttons are disabled while the overlay is up.
+
+### 11.10 Edit save pipeline (`lib/trip-save.ts`)
+
+```ts
+export async function saveTripEdits(args: {
+  userId: string; tripId: string; initial: TripFormValues; initialCoverPath: string | null;
+  form: TripFormValues; uploadedThisAttempt: Set<string>; // mutated: paths uploaded now
+  onProgress(p: { step: 'photos' | 'save'; done: number; total: number }): void;
+}): Promise<{ ok: true; removed: string[] } | { ok: false; kind: ErrorKind; photoId?: string }>;
+```
+
+Sequence (authoritative):
+1. Validate locally (11.11).
+2. Upload new cover and new photos (`path === null`) first; track every uploaded path in `uploadedThisAttempt` and store it in the form state (`path` assigned) so a network retry skips them.
+3. `update trips set title, description, cover_path, visibility where id` with `.select('id').maybeSingle()`; 0 rows or no data = `not_owner`.
+4. `rpc('save_trip_stops')` with the FULL list; existing stops and photos keep their ids (updates), new ones use new uuids.
+5. On success: best-effort delete the RPC's returned paths plus the old cover (`initialCoverPath`) when it was replaced or removed; emit `{ type: 'updated', id }`; `router.back()`.
+
+Error handling:
+- Definite PG error (not network): delete the files in `uploadedThisAttempt` (best effort), clear their `path` values in the form, show the banner; the form stays intact.
+- Network error: keep everything (uploaded paths stay in the form and the set), show the banner with Retry.
+- Retry re-runs the whole sequence; steps 3-4 are idempotent.
+
+UI: while saving, a lighter `PublishProgress variant="save"`: scrim + spinner + "Saving changes..." (and "Uploading photos {x} of {y}" while uploading), blocking touches and Android back, no step list. Failure: overlay closes, `ErrorBanner` at the top of the form with the message and Retry (`retrying` while running), form unchanged; the banner is announced. Header Save shows a spinner while busy.
+
+Edit load states (`useTrip(id)`):
+
+| State | UI |
+|---|---|
+| `loading` | `SkeletonGroup`: cover 16:9 box, title and description field skeletons, visibility block, 2 stop card skeletons (height 220); header Save disabled |
+| `unavailable` | `EmptyState icon="lock"` "Trip unavailable" / "This trip doesn't exist, was removed, or is private." / "Go back" |
+| `error` | `ErrorBanner` "Could not load this trip." + Retry |
+| `ready` but `!isOwner` | `EmptyState icon="lock"` "You can't edit this trip" / "Only the person who created it can change it." / "Go back" |
+| `ready`, owner | The form, initialised once from the trip |
+
+Existing photo and cover images use ONE `useSignedUrls` call for all paths (as in the detail screen).
+
+### 11.11 Validation, limits and error mapping
+
+Limits (constants in `lib/trip-form.ts`): `MAX_STOPS 20`, `MAX_PHOTOS_PER_STOP 5`, `TITLE_MAX 120`, `STOP_NAME_MAX 120`, `TEXT_MAX 5000`.
+
+Local validation on Publish/Save (6.2 principles): trim strings; send `null` (never `''`) for description, notes and address. Title 1-120, stops 1-20, each stop name 1-120, photos <= 5 per stop, description and notes <= 5000, lat/lng finite and in range. Before the first press nothing shows. After the first press, re-validate live. A failed press focuses the first invalid text field or, for "no stops", scrolls to the Stops section (`scrollRef.scrollTo`, positions from `onLayout`), and announces "Fix {n} problems to continue" via `announceForAccessibility`.
+
+Limit UI: Add stop disabled at 20 with the limit caption; the photo add tile is hidden at 5; counters as in 11.4. Defensive checks in the reducer ignore adds beyond the limits.
+
+Error classification (`classifyTripError`, by `error.code`, never by message text):
+
+| Source | Kind | UI message |
+|---|---|---|
+| Network (`isNetworkError` from `lib/auth-errors.ts`, thrown fetch failure) | `network` | "No connection. Check your internet and try again." + Retry |
+| `P0001` | `limit` | "A trip can have up to 20 stops and 5 photos per stop. Remove some and try again." (no Retry, Back to editing) |
+| `42501`, or 0 rows from the trip update | `not_owner` | "You can't change this trip." (no Retry) |
+| `23502`, `23514` | `invalid` | "Some details are not valid. Check the title and stop names, then try again." (no Retry) |
+| `22023`, `22P02`, anything unknown | `unknown` | "Something went wrong. Please try again." + Retry |
+| Local file unreadable | `photo_missing` | "A photo is no longer available. Remove it and try again." (the tile is flagged "Unavailable"; no Retry) |
+| Storage upload error (non-network) | `unknown` | "Could not upload your photos. Please try again." + Retry |
+
+### 11.12 `randomUuid()` and ids
+
+`lib/random-id.ts` today falls back to a non-UUID hex string. The DB columns are `uuid`, so add `randomUuid()`: `crypto.randomUUID()` when available, else build a v4 string from `getRandomValues` (set version and variant bits), last resort `Math.random`-based v4. Use it for trip, stop, photo and cover ids. File names under Storage can keep using the photo's id: path = `{userId}/{tripId}/{photoId}.jpg` (so the path is deterministic per photo; a retry after a lost response re-uploads to the same path, and a `409 Duplicate` response is treated as success). The step 6 sweep stays as a safety net. `randomId()` remains for the pick-location `requestId`.
+
+### 11.13 Keyboard, safe areas, scrolling
+
+- `Screen scroll` gives `keyboardShouldPersistTaps="handled"`, interactive dismiss on iOS, `automaticallyAdjustKeyboardInsets`. Multiline fields near the bottom must remain visible on a small phone; on Android (edge-to-edge) the coder verifies on a device and reports the result (DESIGN 3.4).
+- Return key chain: Title next -> Description (multiline, Return = newline) ; Stop name next -> that stop's Notes. No chain across cards.
+- Tapping Add stop/Change location/photo buttons while a field is focused: `Keyboard.dismiss()` first.
+- Bottom padding of the scroll content >= `Spacing.six` plus the bottom inset (the Screen applies the inset); nothing sits under the home indicator.
+- Header height is native, so the Screen uses `edges={['left','right','bottom']}`.
+- Dark mode: only theme tokens; dashed borders use `borderStrong`; photo close buttons use the `overlay` colour with a white glyph so they read on any photo.
+
+### 11.14 Entry points
+
+- Create: Feed header "+" and empty-state CTAs already push `/trip/new` (7.2, 8.1); no change.
+- Edit: in `trip/[id].tsx` the owner `headerRight` becomes a row of two `IconButton`s: `edit` "Edit trip" (-> `router.push(`/trip/${id}/edit`)`) and the existing `more` "Trip options". Reason: Android `Alert.alert` supports at most 3 buttons, and the menu already uses 3 (toggle, Delete, Cancel); a fourth item would be dropped. Both disabled while `menuBusy || deleting`. The menu content is unchanged. Hide the pencil unless `isOwner`.
+- The detail screen refreshes on the `updated` event (11.2), so an edit shows immediately on return.
+
+### 11.15 States summary
+
+| State | UI |
+|---|---|
+| Create, loading draft | Form skeleton, header Publish disabled |
+| Create, fresh | Empty form, Visibility = Public, no stops block |
+| Create, resumed | Prefilled form; partial-publish banner if `tripId` exists |
+| Validation failed | Inline errors, focus/scroll to first, VoiceOver announcement |
+| Publishing | Overlay with steps (11.9) |
+| Publish failed | Same overlay in failure state: Retry / Back to editing / Discard trip |
+| Discarding | Overlay "Discarding..." |
+| Edit saving | Overlay "Saving changes..." |
+| Edit save failed | Banner with Retry; form kept |
+| Photo picking | Spinner tile / cover spinner; add controls ignored |
+| Photo permission denied | Banner with Open settings |
+| Photo file missing | Tile "Unavailable" with Remove |
+| Limits | Add stop disabled with caption at 20; add-photo tile hidden at 5 |
+
+### 11.16 Accessibility
+
+- Every icon button has an explicit label with the stop number ("Move stop 2 up", "Delete stop 2", "Remove photo 3"); all hit areas >= 44x44 (photo close buttons keep a 44 px box over a 24 px glyph).
+- Order of focus per card: header row (title, up, down, delete), name, location, notes, photo label, tiles (image then its Remove), Add photo.
+- Visibility is a radiogroup with `selected` state; stops section header and each card title have `accessibilityRole="header"`.
+- Errors: inline errors use `TextField` (live region); the "no stops" error and banners are live regions. Progress overlay is a modal (`accessibilityViewIsModal`); step changes are announced once each.
+- Move up/down, add stop, delete stop and photo add/remove all announce their result (`announceForAccessibility`): "Stop moved to position 2 of 5", "Stop 4 added", "Stop deleted", "Photo added", "Photo removed".
+- Dynamic Type 200%: header row wraps, buttons grow (heights are minimums), counters never clip.
+- Colour is never the only signal (icons and text accompany `danger`, `success`, `selected`).
+
+### 11.17 Copy
+
+| Where | String |
+|---|---|
+| Screen titles | "New trip" / "Edit trip" |
+| Header | "Cancel" / "Publish" / "Save" |
+| Fields | "Trip title" / "Description (optional)" / "What is this trip about?" / "Who can see this trip" / "Stop name" / "Notes (optional)" / "Photos" |
+| Visibility | "Public" / "Everyone on onMyWay can see this trip." / "Private" / "Only you can see this trip." |
+| Cover | "Add cover photo" / "Change photo" / "Remove photo" |
+| Stops | "Stops" / "{n} of 20" / "No stops yet" / "Add the places you will visit, in order." / "Add the first stop" / "Add stop" / "You've reached the limit of 20 stops." / "Stop {n}" / "Change location" / "Add photo" / "Unavailable" |
+| Actions | "Publish trip" / "Save changes" / "Save draft and close" |
+| Draft note | "Draft saved on this device" |
+| Resume alert | "Resume your draft?" / "You have an unfinished trip{ \"title\"}, saved {relative time}.{ It was partly published.}" / "Discard draft" / "Resume" |
+| Leave alert (create) | "Save this trip as a draft?" / "You can finish it later." / "Keep editing" / "Discard" / "Save draft" |
+| Leave alert (edit) | "Discard changes?" / "You have unsaved changes." / "Keep editing" / "Discard" |
+| Delete stop alert | "Delete this stop?" / "Its notes and photos will be removed from this trip." / "Cancel" / "Delete" |
+| Partial publish | "This trip was partly published and is still private. Publish to finish, or discard it." |
+| Progress | "Publishing your trip" / "Creating your trip" / "Uploading photos" / "{x} of {y}" / "Saving stops" / "Finishing up" / "Saving changes..." / "Discarding..." |
+| Failure actions | "Retry" / "Back to editing" / "Discard trip" / "Discard this trip?" / "This deletes the partly published trip and its uploaded photos from your account." / "Discard" |
+| Validation | "Enter a title for your trip." / "Enter a name for this stop." / "Add at least one stop to publish." / "Fix {n} problems to continue" |
+| Photos | "Only {n} photos were added. A stop can have up to 5." / "Some photos could not be added." / "Could not open your photo. Please try another." / "Allow photo access in Settings to add photos." / "Open settings" / "A photo is no longer available. Remove it and try again." |
+| Errors | "No connection. Check your internet and try again." / "A trip can have up to 20 stops and 5 photos per stop. Remove some and try again." / "You can't change this trip." / "Some details are not valid. Check the title and stop names, then try again." / "Something went wrong. Please try again." / "Could not upload your photos. Please try again." / "Could not discard this trip. Please try again." |
+| Edit states | "You can't edit this trip" / "Only the person who created it can change it." / plus the existing "Trip unavailable" and "Could not load this trip." |
+| Detail | "Edit trip" (a11y label of the pencil) |
+| Announcements | "Stop {n} added" / "Stop deleted" / "Stop moved to position {n} of {m}" / "Photo added" / "Photo removed" |
+
+### 11.18 Tester checklist
+
+Create
+- "+" opens the form; Visibility defaults to Public; Publish on an empty form shows the title and "no stops" errors, focuses/scrolls to the first, and creates nothing in Supabase.
+- Add stop opens pick-location; confirm appends a numbered card with the picked name/address; cancel adds nothing; the 21st stop cannot be added (button disabled with the caption); Change location keeps a user-edited name and replaces an auto name.
+- Move up/down reorder, update numbers, keep typed text and focus, are disabled at the ends, and the moved card stays in view; VoiceOver/TalkBack announce the new position.
+- Delete: empty stop deletes immediately; a stop with a name edit, notes or photos asks first.
+- Photos: multi-select adds up to the free slots (selecting 6 with 3 present adds 2 and shows the message); add tile disappears at 5; cover crop is 16:9; saved files are JPEG with long side <= 1600; permission denied shows the banner; a purged local file shows "Unavailable".
+- Draft: type, wait 1 s, kill the app, reopen "+" -> "Resume your draft?"; Resume restores everything including photos; Discard draft clears it; the draft is per user (second account sees none); an empty form never leaves a draft; leaving a non-empty form shows Keep editing / Discard / Save draft and each works; empty form leaves silently.
+- Publish success: overlay steps run in order, photo count x of y is right, ends on the trip detail (Back goes to the previous screen, not the form), the trip appears in the Feed (if Public) and on the profile at once, a Private choice stays invisible to others, the draft is gone, Storage contains only referenced files under `{uid}/{tripId}/`.
+- Publish failures (airplane mode at each step: insert, mid-upload, stops, visibility): failure state shows the failed step; Retry resumes without re-uploading finished photos or duplicating the trip (check the table: one row, one set of files); Back to editing keeps the draft with the `tripId` and the partial-publish banner after a restart; Discard trip removes the files and the row and the draft. Forced `P0001`, `42501` and `23514` show the right copy and no Retry.
+- Android back is blocked while publishing.
+
+Edit
+- Pencil appears only for the owner; non-owner deep link to `/trip/{id}/edit` shows "You can't edit this trip".
+- The form is prefilled (title, description, visibility, cover, stops, photos with signed URLs); a background refresh does not overwrite typing.
+- Unchanged -> Save disabled and Cancel leaves silently; changed -> Cancel asks "Discard changes?".
+- Edit title/notes/order/add/remove stops and photos/replace or remove the cover/change visibility, Save: detail shows the new data immediately; existing ids are kept (stop rows updated, not recreated); removed photos and the replaced or removed cover are deleted from Storage; a failed Storage cleanup does not fail the save.
+- Network error during upload or save: banner with Retry, nothing lost, Retry succeeds without duplicate uploads; a definite DB error deletes the files uploaded in that attempt.
+- 20 stops/5 photos trips can be edited and saved (the RPC does not reject a full trip).
+
+General
+- Light and dark mode; Dynamic Type 200%; screen reader order and labels (11.16); touch targets >= 44; keyboard never hides the focused field (small phone, both platforms); safe areas on notch devices; no new lint or type errors; web renders without crashing (maps and picker are not a web target).
+- Security: no secrets or draft content logged; draft key is per user; storage paths always start with the signed-in user's id and the trip id; the app never sends a service key.

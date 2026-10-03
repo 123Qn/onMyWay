@@ -77,6 +77,10 @@ const config: ExpoConfig = {
       },
     ],
   ],
+  extra: {
+    // Sent in the Nominatim User-Agent so OSM can contact us (public by nature).
+    nominatimContactEmail: 'quanhuynhvt2004@gmail.com',
+  },
   experiments: {
     typedRoutes: true,
     reactCompiler: true,
