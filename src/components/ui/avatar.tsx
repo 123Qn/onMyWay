@@ -6,18 +6,20 @@ import { ThemedText } from '@/components/themed-text';
 import { FontFamily, Layout, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-export type AvatarSize = 'sm' | 'md' | 'lg' | 'xl' | number;
+export type AvatarSize = 'sm' | 'md' | 'lg' | 'xl' | 'xxl' | number;
 
 export type AvatarProps = {
   uri?: string | null;
   name?: string;
   size?: AvatarSize;
   accessibilityLabel?: string;
+  /** Ring around the avatar: 'surface' (over a cover) or 'image' (over a photo). */
+  ring?: 'none' | 'surface' | 'image';
   onPress?: () => void;
   testID?: string;
 };
 
-const SIZES = { sm: 32, md: 40, lg: 64, xl: 96 } as const;
+const SIZES = { sm: 32, md: 40, lg: 64, xl: 96, xxl: 112 } as const;
 
 export function getInitials(name?: string): string {
   const words = (name ?? '').trim().split(/\s+/).filter(Boolean);
@@ -32,6 +34,7 @@ export function Avatar({
   name,
   size = 'md',
   accessibilityLabel,
+  ring = 'none',
   onPress,
   testID,
 }: AvatarProps) {
@@ -39,6 +42,8 @@ export function Avatar({
   const [failedUri, setFailedUri] = useState<string | null>(null);
   const px = typeof size === 'number' ? size : SIZES[size];
   const label = accessibilityLabel ?? (name ? `${name}'s avatar` : 'Avatar');
+  const ringWidth = ring === 'none' ? 0 : px >= SIZES.xl ? 4 : 2;
+  const ringColor = ring === 'image' ? theme.onImage : theme.background;
   const showImage = !!uri && failedUri !== uri;
 
   const circle = (
@@ -50,6 +55,7 @@ export function Avatar({
       style={[
         styles.circle,
         { width: px, height: px, borderRadius: Radius.full, backgroundColor: theme.primarySoft },
+        ringWidth > 0 && { borderWidth: ringWidth, borderColor: ringColor },
       ]}>
       {showImage ? (
         <Image
@@ -63,7 +69,7 @@ export function Avatar({
         />
       ) : (
         <ThemedText
-          themeColor="primary"
+          themeColor="primaryPressed"
           maxFontSizeMultiplier={1.2}
           style={[styles.initials, { fontSize: px * 0.4, lineHeight: px * 0.5 }]}>
           {getInitials(name)}

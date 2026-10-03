@@ -1,7 +1,7 @@
 import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Layout, Spacing } from '@/constants/theme';
+import { FontFamily, Layout, Spacing } from '@/constants/theme';
 
 export type HeaderTextButtonProps = {
   label: string;
@@ -9,10 +9,12 @@ export type HeaderTextButtonProps = {
   disabled?: boolean;
   loading?: boolean;
   bold?: boolean;
+  /** 'neutral' (Cancel) uses the text colour; 'primary' (Save/Publish) the accent. */
+  tone?: 'primary' | 'neutral';
 };
 
 /** Text button for native stack headers (Cancel / Save / Publish). */
-export function HeaderTextButton({ label, onPress, disabled, loading, bold }: HeaderTextButtonProps) {
+export function HeaderTextButton({ label, onPress, disabled, loading, bold, tone = 'primary' }: HeaderTextButtonProps) {
   const inactive = disabled || loading;
   return (
     <Pressable
@@ -27,9 +29,9 @@ export function HeaderTextButton({ label, onPress, disabled, loading, bold }: He
         <ActivityIndicator />
       ) : (
         <ThemedText
-          themeColor="primary"
+          themeColor={tone === 'neutral' ? 'text' : 'primary'}
           type={bold ? 'bodyStrong' : 'default'}
-          style={disabled ? styles.disabled : undefined}>
+          style={[{ fontFamily: FontFamily.semibold }, disabled ? styles.disabled : null]}>
           {label}
         </ThemedText>
       )}

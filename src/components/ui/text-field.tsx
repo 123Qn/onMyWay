@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -14,7 +15,7 @@ import { Icon } from './icon';
 import { IconButton } from './icon-button';
 
 import { ThemedText } from '@/components/themed-text';
-import { FontFamily, Layout, Radius, Spacing, Typography } from '@/constants/theme';
+import { FontFamily, Layout, Radius, Spacing, Typography, shadow } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type TextFieldProps = Omit<TextInputProps, 'style' | 'value' | 'onChangeText'> & {
@@ -28,6 +29,8 @@ export type TextFieldProps = Omit<TextInputProps, 'style' | 'value' | 'onChangeT
   helperTone?: 'muted' | 'success';
   /** Shows a small spinner before the helper text (e.g. while checking availability). */
   helperLoading?: boolean;
+  /** 'onCard' uses surfaceMuted fill (inside white cards). */
+  variant?: 'default' | 'onCard';
   containerStyle?: StyleProp<ViewStyle>;
 };
 
@@ -45,6 +48,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
     helperLoading = false,
     multiline = false,
     editable = true,
+    variant = 'default',
     containerStyle,
     onFocus,
     onBlur,
@@ -68,6 +72,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
 
   const hasError = !!error;
   const borderColor = hasError ? theme.danger : focused ? theme.primary : theme.borderStrong;
+  const focusRing = { ...shadow(theme, 'sm'), shadowColor: theme.primary, shadowOpacity: 0.15, shadowRadius: 4, shadowOffset: { width: 0, height: 0 } };
   const counterAtLimit = maxLength !== undefined && value.length >= maxLength;
   
   return (
@@ -82,10 +87,11 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
         style={[
           styles.inputRow,
           {
-            backgroundColor: editable ? theme.surface : theme.border,
+            backgroundColor: variant === 'onCard' ? theme.surfaceMuted : theme.surface,
             borderColor,
-            borderWidth: 2,
+            borderWidth: focused || hasError ? 2 : 1.5,
           },
+          focused && !hasError && Platform.OS === 'ios' && focusRing,
           !editable && styles.disabled,
         ]}>
         <TextInput
@@ -171,7 +177,7 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: Layout.controlHeight.md,
+    minHeight: Layout.inputHeight,
     borderRadius: Radius.md,
   },
   input: {

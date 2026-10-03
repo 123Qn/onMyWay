@@ -27,7 +27,10 @@ export type IconName =
   | 'arrow-up'
   | 'arrow-down'
   | 'trash'
-  | 'edit';
+  | 'edit'
+  | 'route'
+  | 'calendar'
+  | 'camera';
 
 type SymbolName = Exclude<ComponentProps<typeof SymbolView>['name'], string>;
 
@@ -59,6 +62,13 @@ const ICONS: Record<IconName, Required<SymbolName>> = {
   'arrow-down': { ios: 'arrow.down', android: 'arrow_downward', web: 'arrow_downward' },
   trash: { ios: 'trash', android: 'delete', web: 'delete' },
   edit: { ios: 'pencil', android: 'edit', web: 'edit' },
+  route: {
+    ios: 'point.topleft.down.curvedto.point.bottomright.up',
+    android: 'route',
+    web: 'route',
+  },
+  calendar: { ios: 'calendar', android: 'calendar_today', web: 'calendar_today' },
+  camera: { ios: 'camera', android: 'photo_camera', web: 'photo_camera' },
 };
 
 export type IconProps = {

@@ -10,7 +10,7 @@ import {
 import { Icon, type IconName } from './icon';
 
 import { ThemedText } from '@/components/themed-text';
-import { Layout, Radius, Spacing, type ThemeColor } from '@/constants/theme';
+import { Layout, Radius, Spacing, shadow, type ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ButtonProps = {
@@ -21,6 +21,10 @@ export type ButtonProps = {
   loading?: boolean;
   disabled?: boolean;
   fullWidth?: boolean;
+  /** Adds the floating-CTA shadow (only with primary, size lg). */
+  floating?: boolean;
+  /** Ghost on a surfaceMuted/primarySoft fill: uses primaryPressed for contrast. */
+  tone?: 'default' | 'onSoft';
   icon?: IconName;
   iconPosition?: 'left' | 'right';
   accessibilityLabel?: string;
@@ -29,6 +33,7 @@ export type ButtonProps = {
   testID?: string;
 };
 
+const PADDING_X = { sm: 16, md: 20, lg: 24 } as const;
 const HIT_SLOP = { top: 4, bottom: 4, left: 4, right: 4 } as const;
 
 export function Button({
@@ -39,6 +44,8 @@ export function Button({
   loading = false,
   disabled = false,
   fullWidth = false,
+  floating = false,
+  tone = 'default',
   icon,
   iconPosition = 'left',
   accessibilityLabel,
@@ -55,7 +62,9 @@ export function Button({
       : variant === 'destructive'
         ? 'onDanger'
         : variant === 'ghost'
-          ? 'primary'
+          ? tone === 'onSoft'
+            ? 'primaryPressed'
+            : 'primary'
           : 'text';
 
   const iconNode = icon ? <Icon name={icon} size={Layout.iconSize.md} color={textColor} /> : null;
@@ -72,15 +81,13 @@ export function Button({
       hitSlop={size === 'sm' ? HIT_SLOP : undefined}
       style={({ pressed }) => [
         styles.base,
-        { minHeight: Layout.controlHeight[size], borderRadius: Radius.md },
+        { minHeight: Layout.controlHeight[size], borderRadius: Radius.full, paddingHorizontal: PADDING_X[size] },
         fullWidth ? styles.fullWidth : styles.intrinsic,
         variant === 'primary' && {
           backgroundColor: pressed ? theme.primaryPressed : theme.primary,
         },
         variant === 'secondary' && {
-          borderWidth: 1.5,
-          borderColor: theme.borderStrong,
-          backgroundColor: pressed ? theme.primarySoft : 'transparent',
+          backgroundColor: pressed ? theme.backgroundSelected : theme.surfaceMuted,
         },
         variant === 'destructive' && {
           backgroundColor: theme.danger,
@@ -89,6 +96,7 @@ export function Button({
         variant === 'ghost' && {
           backgroundColor: pressed ? theme.primarySoft : 'transparent',
         },
+        floating && variant === 'primary' && shadow(theme, 'fab', 'primary'),
         disabled && styles.disabled,
         style,
       ]}>
@@ -112,7 +120,6 @@ const styles = StyleSheet.create({
   base: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: Spacing.three,
   },
   fullWidth: { alignSelf: 'stretch' },
   intrinsic: { minWidth: 88 },

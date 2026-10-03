@@ -2,6 +2,7 @@ import { ActivityIndicator, Pressable, StyleSheet, type StyleProp, type ViewStyl
 
 import { Icon, type IconName } from './icon';
 
+import { GlassSurface } from './glass-surface';
 import { Layout, Radius, type ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -10,7 +11,7 @@ export type IconButtonProps = {
   onPress: () => void;
   accessibilityLabel: string;
   size?: 'md' | 'lg';
-  variant?: 'plain' | 'filled';
+  variant?: 'plain' | 'filled' | 'glass';
   color?: ThemeColor;
   disabled?: boolean;
   loading?: boolean;
@@ -51,11 +52,15 @@ export function IconButton({
       style={({ pressed }) => [
         styles.base,
         { width: box, height: box, borderRadius: Radius.full },
-        variant === 'filled' && { backgroundColor: theme.surface },
-        pressed && { backgroundColor: theme.border },
+        variant === 'filled' && { backgroundColor: theme.surfaceMuted },
+        pressed && variant !== 'glass' && { backgroundColor: theme.border },
+        pressed && variant === 'glass' && styles.glassPressed,
         disabled && styles.disabled,
         style,
       ]}>
+      {variant === 'glass' ? (
+        <GlassSurface radius={Radius.full} style={StyleSheet.absoluteFill} />
+      ) : null}
       {loading ? (
         <ActivityIndicator color={theme[color]} />
       ) : (
@@ -68,4 +73,5 @@ export function IconButton({
 const styles = StyleSheet.create({
   base: { alignItems: 'center', justifyContent: 'center' },
   disabled: { opacity: 0.4 },
+  glassPressed: { opacity: 0.8 },
 });
