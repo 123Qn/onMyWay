@@ -9,6 +9,16 @@ if (!androidMapsKey) {
   );
 }
 
+// Config time only (not EXPO_PUBLIC_). It ends up in `extra` on purpose: it is sent in the
+// Nominatim User-Agent so OSM can contact us (public by nature).
+const nominatimContactEmail = process.env.NOMINATIM_CONTACT_EMAIL?.trim();
+
+if (!nominatimContactEmail) {
+  console.warn(
+    'NOMINATIM_CONTACT_EMAIL is not set: Nominatim requests will be sent without a contact in the User-Agent.',
+  );
+}
+
 const config: ExpoConfig = {
   name: 'onMyWay',
   slug: 'onMyWay',
@@ -29,6 +39,9 @@ const config: ExpoConfig = {
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
+    // Keep AsyncStorage (trip drafts) out of Android Auto Backup / device transfer.
+    // The session is in SecureStore and all real data lives in Supabase.
+    allowBackup: false,
     permissions: [
       'android.permission.ACCESS_COARSE_LOCATION',
       'android.permission.ACCESS_FINE_LOCATION',
@@ -78,8 +91,7 @@ const config: ExpoConfig = {
     ],
   ],
   extra: {
-    // Sent in the Nominatim User-Agent so OSM can contact us (public by nature).
-    nominatimContactEmail: 'quanhuynhvt2004@gmail.com',
+    ...(nominatimContactEmail ? { nominatimContactEmail } : {}),
   },
   experiments: {
     typedRoutes: true,
