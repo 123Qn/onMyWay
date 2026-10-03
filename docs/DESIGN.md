@@ -486,3 +486,168 @@ Accessibility: the status line is a live region (`accessibilityLiveRegion="polit
 Titles: "Sign in", "Create your account", "Choose your username". Buttons: "Sign in", "Create account", "Save and continue", "Sign out", "Retry". Links: "Create an account", "Sign in". Generic errors: "Something went wrong. Please try again." / "No connection. Check your internet and try again." / "Too many attempts. Please wait a minute and try again." All other strings are listed in the tables above and must be used verbatim.
 
 Tester checks: wrong password shows the banner (not an inline error); Return chains all fields; sign-up with a taken email shows the inline error; username input cannot show capitals or spaces; typing quickly sends one availability request after 400 ms; Save is disabled for `invalid`/`checking`/`taken`; two accounts racing for one name produce the 23505 message; there is no way back to sign-up from Choose username; Sign out works from both Choose username and Profile; VoiceOver/TalkBack announce status changes once.
+
+---
+
+## 7. Step 6 - Profile
+
+Existing code to reuse: `useSession()` gives `profile` (`id, username, display_name, avatar_path, bio`) and `refreshProfile()`; `lib/username.ts` (`normalizeUsernameInput`, `validateUsername`); `signOutUser`; `ui/*`. Avatar URL: `supabase.storage.from('avatars').getPublicUrl(avatar_path).data.publicUrl` through one helper `lib/avatar-url.ts` (`getAvatarUrl(path: string | null): string | null`). Filenames are unique per upload, so no cache busting is needed.
+
+### 7.1 New shared pieces
+
+| File | Purpose |
+|---|---|
+| `components/trip/trip-card.tsx` | `TripCard` + `TripCardSkeleton` (spec in 8.2; used by Feed and both profiles) |
+| `components/profile/profile-header.tsx` | `ProfileHeader` (below) |
+| `hooks/use-username-availability.ts` | Extract the debounce + status logic from `choose-username` so onboarding and Edit profile share it. Input `(value, currentUsername?)`; when `value === currentUsername` return status `unchanged` (valid, no query) |
+| `lib/avatar-url.ts`, `lib/format-date.ts` | See 7.2 and 8.3 |
+
+`ProfileHeader` props:
+
+| Prop | Type | Default |
+|---|---|---|
+| `displayName` | `string` | required |
+| `username` | `string` | required |
+| `avatarUrl` | `string \| null` | none |
+| `bio` | `string \| null` | none (hidden when empty) |
+| `tripCount` | `number \| null` | `null` (shows a skeleton line while null) |
+| `actions` | `ReactNode` | none (rendered in a row under the stats) |
+
+Layout: centred column, gap `Spacing.two`, padding `Spacing.three`. `Avatar xl`, display name (`title` type, 1-2 lines, centred, header role), `@username` (`textMuted`), bio (`body`, centred, max width 480), stat line "5 trips" (`label`; "1 trip"), then `actions`.
+
+### 7.2 My profile (`(tabs)/profile`)
+
+- Screen: `Screen tabBarInset padded={false}` containing one `FlatList`; `ListHeaderComponent` = `ProfileHeader` with actions row: `Button "Edit profile"` (secondary, md) and `Button "Sign out"` (ghost, md, loading while signing out, failure `ErrorBanner` "Could not sign out. Please try again." as today). Both buttons `flex: 1` in a row, gap `Spacing.two`.
+- No big "Profile" title: the name is the header. Keep an accessible header role on the display name.
+- Trips: own trips INCLUDING private, `compact` `TripCard` (`showAuthor` off), newest first. Query `trips` where `owner_id = me`, order `created_at desc, id desc`, page 20 with the same keyset/pagination behaviour as Feed (8.1). Embed the stop count: select `id, title, cover_path, visibility, created_at, stops(count)`. Trip count: separate `select('id', { count: 'exact', head: true })` (own: all visibilities).
+- Private trips show the lock badge (8.2). Tap -> `/trip/[id]`.
+- States: loading -> header + 3 compact skeletons; empty -> `EmptyState icon="map" title="You haven't created a trip" message="Plan a route and share it with other travellers." actionLabel="Create a trip"` (CTA -> `/trip/new`); error -> `ErrorBanner "Could not load your trips." + Retry` under the header; pull-to-refresh refetches count, first page and `refreshProfile()`; footer spinner / "Could not load more trips." + Retry row as in Feed.
+- Avatar in the header is NOT tappable here (editing happens in the modal).
+
+### 7.3 Other user's profile (`(app)/user/[username].tsx`)
+
+- Native stack header with back button, title `@username` (lowercase the param first). Registered in `(app)/_layout.tsx` as a normal push screen.
+- Viewing myself: DECISION - redirect. If the param equals my own username, render `<Redirect href="/profile" />` (switches to my tab, which has Edit profile and private trips). No duplicate own-view screen.
+- Fetch profile by username (`profiles` select `id, username, display_name, avatar_path, bio`, `.maybeSingle()`), then public trips: `trips` where `owner_id = profile.id` and `visibility = 'public'` (RLS enforces this; keep the filter explicit), count of public trips, same compact cards, pagination and states as 7.2. No actions row.
+- States: loading -> `ProfileHeader` skeleton (circle `xl`, two text lines) plus 3 compact skeletons, wrapped in `SkeletonGroup`; not found -> `EmptyState icon="person" title="User not found" message="This profile doesn't exist or was removed." actionLabel="Go back" onAction={router.back}`; load error -> `ErrorBanner "Could not load this profile." + Retry`; no public trips -> `EmptyState icon="map" title="No public trips yet" message="@name hasn't shared a trip yet."` (no CTA).
+
+### 7.4 Edit profile (`(app)/profile/edit.tsx`)
+
+Registered in `(app)/_layout.tsx` with `presentation: 'modal'`, `title: 'Edit profile'`, header left "Cancel", header right "Save" (text buttons, min 44 px hit area via `hitSlop`/padding). `Screen scroll edges={['left','right','bottom']}` (native header handles the top).
+
+Fields (all prefilled from `profile`, then local state):
+1. Avatar block (centred): `Avatar xl` (`onPress` opens the picker, label "Change profile photo"), below it `Button variant="ghost" size="sm" title="Change photo"` and, only when a photo exists or one was picked, `Button variant="ghost" size="sm" title="Remove photo"`. While saving with a new photo an `ActivityIndicator` overlays the avatar.
+2. Display name: `TextField`, `maxLength={50}`, `showCounter`, `autoCapitalize="words"`, `autoComplete="name"`, `returnKeyType="next"`; trimmed 1-50, error "Enter your name."
+3. Username: same input rules as Choose username (lowercase, no spaces, `autoCapitalize="none"`, `autoCorrect={false}`, `maxLength={30}`, `showCounter`), statuses via `useUsernameAvailability(value, profile.username)`; unchanged value shows no status (helper "This is your current username."). Same copy as 6.5, taken -> "@name is already taken. Try another."
+4. Bio: `TextField multiline`, `maxLength={160}`, `showCounter`, `autoCapitalize="sentences"`, helper "Tell travellers a bit about yourself." Optional; empty saves as `null`; trim, collapse 3+ newlines to 2.
+
+Photo picking: `expo-image-picker` `launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 1 })` (square crop; verify option names in SDK 57 docs), then `expo-image-manipulator` resize to 512x512 JPEG, compress 0.8 (stays well under the 2 MB bucket limit; `image/jpeg` only). Preview the local uri immediately. Permission denied -> inline note under the avatar: "Allow photo access in Settings to choose a picture." Picker/manipulator error -> `ErrorBanner` "Could not open your photo. Please try another." No camera option in MVP.
+
+Save (header "Save"): enabled only when the form is dirty AND valid AND username status is `available`/`unchanged`/`check-failed`; shows a spinner in place of the label while saving; Cancel and field editing are disabled while saving. Sequence:
+1. If a new photo: upload to `avatars/{uid}/{uuid}.jpg` (`contentType: 'image/jpeg'`). supabase-js gives no upload progress, so progress = indeterminate (avatar overlay spinner + Save spinner).
+2. One `update` on `profiles` with only changed columns (`display_name`, `username`, `bio`, `avatar_path`). Error `23505` -> username status `taken` ("@name was just taken. Try another."), refocus the username field, and delete the file uploaded in step 1 (best effort).
+3. After success, delete the OLD avatar file (best effort, ignore errors), `await refreshProfile()`, then `router.back()`.
+- Failures: upload error -> `ErrorBanner` "Could not upload your photo. Please try again." with Retry (re-runs Save; the form state is kept); other update/network error -> "Could not save your profile. Please try again." / "No connection. Check your internet and try again." with Retry. Banner sits at the top of the form and is announced.
+- Remove photo: sets `avatar_path = null` on Save and deletes the old file.
+
+Unsaved changes: `gestureEnabled: !dirty` on the modal (blocks iOS swipe-down) and a `beforeRemove` listener on the navigation object that, when dirty and not just saved, calls `e.preventDefault()` and shows React Native `Alert.alert("Discard changes?", "You have unsaved changes.", [{ text: "Keep editing", style: "cancel" }, { text: "Discard", style: "destructive", onPress: () => navigation.dispatch(e.data.action) }])`. This covers Cancel, Android hardware back and programmatic dismissals. Skip the check after a successful save.
+
+### 7.5 Copy (step 6)
+
+| Where | String |
+|---|---|
+| Stat | "1 trip" / "{n} trips" |
+| Own empty | "You haven't created a trip" / "Plan a route and share it with other travellers." / "Create a trip" |
+| Other empty | "No public trips yet" / "@name hasn't shared a trip yet." |
+| Not found | "User not found" / "This profile doesn't exist or was removed." / "Go back" |
+| Errors | "Could not load this profile." / "Could not load your trips." / "Could not load more trips." / "Could not sign out. Please try again." |
+| Edit | "Edit profile", "Cancel", "Save", "Change photo", "Remove photo", "Change profile photo", "Display name", "Username", "Bio" |
+| Edit errors | "Enter your name." / "Could not open your photo. Please try another." / "Allow photo access in Settings to choose a picture." / "Could not upload your photo. Please try again." / "Could not save your profile. Please try again." |
+| Discard alert | "Discard changes?" / "You have unsaved changes." / "Keep editing" / "Discard" |
+
+---
+
+## 8. Step 7 - Feed
+
+### 8.1 Feed screen (`(tabs)/index`)
+
+Data: `supabase.rpc('get_feed', { p_before_created_at, p_before_id, p_limit: 20 })`. Row: `trip_id, owner_id, title, description, cover_path, created_at, stop_count, username, display_name, avatar_path` (no visibility: the feed is public trips only). Cursor = last row's `created_at` + `trip_id`. `hasMore = rows.length === 20`. Dedupe by `trip_id` when appending. Put the logic in `hooks/use-feed.ts` returning `{ items, status: 'loading' | 'ready' | 'error', refreshing, loadingMore, loadMoreError, hasMore, refresh, loadMore, retry }`; guard against stale responses with a request counter (a refresh invalidates in-flight page loads) and never run two loads at once.
+
+Layout: `Screen tabBarInset padded={false}`. Fixed header row (padding `Spacing.three`): `ThemedText type="title" header` "Feed" on the left, `IconButton icon="plus" variant="filled" accessibilityLabel="Create trip"` on the right (-> `/trip/new`; the coder adds a placeholder route showing `EmptyState icon="map" title="Creating trips is coming soon"` until step 10). Under it a `FlatList`: `contentContainerStyle` padding `Spacing.three`, `ItemSeparator` gap `Spacing.three`, `onEndReachedThreshold={0.5}`, `onEndReached={loadMore}` (no-op when loading, no more, or after a load-more error), `refreshControl` (pull to refresh, tint `primary`), `keyExtractor` = `trip_id`, `initialNumToRender 4`, `windowSize 7`.
+
+States:
+
+| State | UI |
+|---|---|
+| First load | 3 `TripCardSkeleton variant="feed"` in a `SkeletonGroup` |
+| Empty | `EmptyState icon="map" title="No trips yet" message="Be the first to share a journey." actionLabel="Create your first trip"` (CTA -> `/trip/new`); list stays pull-to-refreshable (`flexGrow: 1` content container) |
+| First load error | `ErrorBanner message="Could not load the feed." onRetry={retry}` at the top of the list area |
+| Refresh error with data | Same banner `"Could not refresh the feed."` above the list; keep showing existing items |
+| Loading more | Footer: centred `ActivityIndicator` (padding `Spacing.three`), a11y label "Loading more trips" |
+| Load-more error | Footer row: muted text "Could not load more trips." + `Button ghost sm "Retry"` |
+| End of list (`!hasMore`, items >= 1) | Footer muted caption centred: "You're all caught up" (with `check` icon sm) |
+
+Navigation: card -> `router.push('/trip/${trip_id}')` (step 8 placeholder); author row -> `router.push('/user/${username}')` (if the author is me, the profile screen redirects to my tab, see 7.3).
+
+### 8.2 Cover images (private bucket)
+
+`hooks/use-signed-urls.ts`: `useSignedUrls(paths: (string | null)[]) => Record<string, string>`. Rules: batch missing paths in ONE `storage.from('trip-photos').createSignedUrls(paths, 3600)` per page; module-level cache `Map<path, { url, expiresAt }>` with expiry 50 min (re-sign when expired or on image `onError`, once); never sign per card. While URLs are pending the cover shows the placeholder (no layout shift). Pass `source={{ uri, cacheKey: cover_path }}` to `expo-image` so the cache survives URL token changes (verify `cacheKey` in the SDK 57 docs), `cachePolicy="memory-disk"`, `contentFit="cover"`, `transition={150}`.
+
+No-cover placeholder: same box as the cover, background `primarySoft`, centred `Icon name="map"` size `xl` in `primary` at 60% opacity. Decorative (`accessible={false}`).
+
+### 8.3 `TripCard` (`components/trip/trip-card.tsx`)
+
+```ts
+type TripCardData = {
+  id: string; title: string; coverUrl: string | null; coverPath: string | null;
+  stopCount: number; createdAt: string; isPrivate?: boolean;
+  author?: { username: string; displayName: string; avatarUrl: string | null };
+};
+```
+
+| Prop | Type | Default |
+|---|---|---|
+| `trip` | `TripCardData` | required |
+| `variant` | `'feed' \| 'compact'` | `'feed'` |
+| `showAuthor` | `boolean` | `true` for feed, forced `false` for compact |
+| `onPress` | `() => void` | required |
+| `onPressAuthor` | `() => void` | none (author row is plain when absent) |
+
+`TripCardSkeleton` takes `variant` and mirrors the layout exactly (same heights) to avoid jumps.
+
+Feed variant: container bg `surface`, radius `Radius.lg`, `overflow: 'hidden'`.
+1. Author row (only if `showAuthor`): `Pressable`, min height 56, padding `Spacing.three` horizontal and `Spacing.two` vertical, `Avatar md`, then display name (`label`, 1 line) over `@username` (`caption`, `textMuted`, 1 line).
+2. Main area: `Pressable` containing the cover (16:9, full width, `Radius` none) and the body (padding `Spacing.three`, gap `Spacing.one`): title (`subheading`, max 2 lines), meta row (`caption`, `textMuted`): `Icon map sm` + "5 stops" + " · " + relative date; private badge right-aligned.
+
+Compact variant: one `Pressable` row, padding `Spacing.two`, gap `Spacing.three`, bg `surface`, radius `Radius.lg`: 88x88 thumbnail (`Radius.md`, cover or placeholder) + column (title `subheading` 2 lines, meta row as above, badge under the meta row). Min height 104.
+
+Private badge: pill (`Radius.full`, bg `background`, 1 px `border`, padding `Spacing.two` x `Spacing.half`) with `Icon lock sm` + `caption` "Private". Solid background so it needs no contrast-over-photo handling; in the feed variant it sits in the meta row, never over the cover.
+
+Accessibility:
+- The author row and the main area are TWO sibling buttons (a nested pressable inside a single accessible card is unreachable for screen readers). Both >= 44 px tall.
+- Main: `accessibilityRole="button"`, label `"{title}. {n} stops. Posted {long date}."` + `" Private trip."` when private; hint "Opens trip details". Cover, icons and the badge are children of this single accessible element (not separately focusable).
+- Author: role `button`, label `"{displayName}, @{username}. View profile"`.
+- Compact variant: single main button, same label (no author).
+- Pressed state: `opacity 0.9` on the card area; Android ripple optional.
+- Respect Dynamic Type: titles wrap at 2 lines with `numberOfLines={2}`; card heights are minimums except the cover/thumbnail.
+
+Stop count text: `0 -> "No stops"`, `1 -> "1 stop"`, else `"{n} stops"`.
+
+Relative date helper `lib/format-date.ts` (pure, no new deps, no `Intl` reliance because `Intl.RelativeTimeFormat` support on Hermes varies): `formatRelativeShort(iso, now = new Date())`:
+- under 60 s (or a future timestamp from clock skew): "now"
+- under 60 min: "{m}m"; under 24 h: "{h}h"; under 7 d: "{d}d"
+- same calendar year: "{day} {Mon}" e.g. "12 Mar"; other year: "{day} {Mon} {year}" e.g. "12 Mar 2025" (month names from a fixed English array, local time)
+`formatDateLong(iso)` for screen readers: "12 March 2025" (also used if the card is older than 7 days) and `formatRelativeLong` for recent items: "2 hours ago", "3 days ago", "1 minute ago", "just now". Use the long forms only in `accessibilityLabel`. The feed does not live-update timestamps; they refresh on pull-to-refresh.
+
+### 8.4 Copy (step 7)
+
+| Where | String |
+|---|---|
+| Header | "Feed"; button label "Create trip" |
+| Empty | "No trips yet" / "Be the first to share a journey." / "Create your first trip" |
+| Errors | "Could not load the feed." / "Could not refresh the feed." / "Could not load more trips." / "Retry" |
+| Footer | "Loading more trips" (a11y only) / "You're all caught up" |
+| Card | "{n} stops", "1 stop", "No stops", "Private" |
+| Placeholder route | "Creating trips is coming soon" |
+
+Tester checks: first page shows 20 items, scrolling loads the next page once per threshold hit, no duplicate rows after refresh during a page load; airplane mode shows the right banner for first load vs refresh vs load-more; private trips appear only on my profile with a lock badge; covers load via ONE signed-URL request per page; tapping the author and the card go to different screens; opening my own username from the feed lands on my profile tab; Edit profile: dirty form + swipe/back/Cancel asks to discard, failed upload keeps the form, a race on a username shows the inline taken message; avatars show initials when `avatar_path` is null or the image fails; dark mode and 200% font scale keep cards readable.

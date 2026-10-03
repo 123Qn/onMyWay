@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { type TextInput } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Screen } from '@/components/ui/screen';
 import { TextField } from '@/components/ui/text-field';
+import { useUsernameAvailability } from '@/hooks/use-username-availability';
 import { AUTH_COPY, isNetworkError } from '@/lib/auth-errors';
 import { signOutUser } from '@/lib/sign-out';
 import { supabase } from '@/lib/supabase';
@@ -17,83 +18,18 @@ import {
 } from '@/lib/username';
 import { useSession } from '@/providers/session-provider';
 
-const DEBOUNCE_MS = 400;
-
-type Availability = { value: string; state: 'available' | 'taken' | 'failed' };
 type Banner = { message: string; retryable: boolean; action: 'save' | 'signOut' };
 
 export default function ChooseUsernameScreen() {
   const { session, profile, refreshProfile } = useSession();
   const [value, setValue] = useState(() => suggestUsername(profile?.display_name));
-  const [availability, setAvailability] = useState<Availability | null>(null);
-  const [justTaken, setJustTaken] = useState<string | null>(null);
   const [banner, setBanner] = useState<Banner | null>(null);
   const [saving, setSaving] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const savingRef = useRef(false);
   const inputRef = useRef<TextInput>(null);
 
-  const validation = validateUsername(value);
-  const valid = validation.status === 'ok';
-
-  // Debounced availability check. The cleanup invalidates stale responses and the timer.
-  useEffect(() => {
-    if (!valid) return;
-    let active = true;
-    const timer = setTimeout(async () => {
-      let state: Availability['state'];
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('username', value)
-          .maybeSingle();
-        state = error ? 'failed' : data ? 'taken' : 'available';
-      } catch {
-        state = 'failed';
-      }
-      if (active) setAvailability({ value, state });
-    }, DEBOUNCE_MS);
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, [value, valid]);
-
-  type Status = 'idle' | 'invalid' | 'checking' | 'available' | 'taken' | 'check-failed';
-  let status: Status;
-  if (validation.status === 'idle') status = 'idle';
-  else if (validation.status === 'invalid') status = 'invalid';
-  else if (justTaken === value) status = 'taken';
-  else if (availability?.value === value) {
-    status = availability.state === 'failed' ? 'check-failed' : availability.state;
-  } else status = 'checking';
-
-  let helperText: string | undefined;
-  let error: string | null = null;
-  switch (status) {
-    case 'idle':
-      helperText = '3-30 characters: letters, numbers and underscores.';
-      break;
-    case 'invalid':
-      error = validation.status === 'invalid' ? validation.message : null;
-      break;
-    case 'checking':
-      helperText = 'Checking availability...';
-      break;
-    case 'available':
-      helperText = `@${value} is available.`;
-      break;
-    case 'taken':
-      error =
-        justTaken === value
-          ? `@${value} was just taken. Try another.`
-          : `@${value} is already taken. Try another.`;
-      break;
-    case 'check-failed':
-      helperText = "Couldn't check availability. You can still try to save.";
-      break;
-  }
+  const { status, error, helperText, markTaken } = useUsernameAvailability(value);
 
   const canSave = (status === 'available' || status === 'check-failed') && !saving && !signingOut;
 
@@ -111,7 +47,7 @@ export default function ChooseUsernameScreen() {
         .eq('id', session.user.id);
       if (updateError) {
         if (updateError.code === '23505') {
-          setJustTaken(value);
+          markTaken(value);
           inputRef.current?.focus();
         } else {
           setBanner({
