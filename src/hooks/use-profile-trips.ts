@@ -31,6 +31,8 @@ export type ProfileTrips = {
   loadMore: () => void;
   /** Retries after a load-more error. */
   retryLoadMore: () => void;
+  /** Re-signs one cover after an image load error. */
+  retryCover: (path: string) => void;
   /** Retries after a first-load error. */
   retry: () => void;
 };
@@ -196,7 +198,7 @@ export function useProfileTrips({ ownerId, publicOnly }: Options): ProfileTrips 
   }, [runLoadMore]);
 
   const paths = useMemo(() => rows.map((r) => r.cover_path), [rows]);
-  const urls = useSignedUrls(paths);
+  const { urls, retry: retryCover } = useSignedUrls(paths);
 
   const items = useMemo<TripCardData[]>(
     () =>
@@ -225,5 +227,6 @@ export function useProfileTrips({ ownerId, publicOnly }: Options): ProfileTrips 
     loadMore,
     retryLoadMore,
     retry,
+    retryCover,
   };
 }

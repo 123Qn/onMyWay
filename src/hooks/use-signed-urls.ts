@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { supabase } from '@/lib/supabase';
 
@@ -20,21 +20,25 @@ export function clearSignedUrlCache(): void {
   cache.clear();
 }
 
-/** Drops a cached URL so the next hook run re-signs it (e.g. after an image load error). */
-export function invalidateSignedUrl(path: string): void {
-  cache.delete(path);
-}
+export type SignedUrls = {
+  /** path -> signed URL; pending or failed paths are absent. */
+  urls: Record<string, string>;
+  /** Invalidates one path and re-signs it (call once after an image load error). */
+  retry: (path: string) => void;
+};
 
 /**
  * Signs private 'trip-photos' paths in ONE batched request per call (only paths that are
- * missing or expired). Returns a map of path -> signed URL; pending paths are absent.
+ * missing or expired).
  */
-export function useSignedUrls(paths: (string | null)[]): Record<string, string> {
+export function useSignedUrls(paths: (string | null)[]): SignedUrls {
   const key = useMemo(
     () => Array.from(new Set(paths.filter((p): p is string => !!p))).join('\n'),
     [paths],
   );
   const [version, setVersion] = useState(0);
+  // Only changes through retry(), so a path that fails to sign cannot cause a request loop.
+  const [retryTick, setRetryTick] = useState(0);
 
   useEffect(() => {
     if (!key) return;
@@ -61,9 +65,14 @@ export function useSignedUrls(paths: (string | null)[]): Record<string, string> 
     return () => {
       active = false;
     };
-  }, [key]);
+  }, [key, retryTick]);
 
-  return useMemo(() => {
+  const retry = useCallback((path: string) => {
+    cache.delete(path);
+    setRetryTick((t) => t + 1);
+  }, []);
+
+  const urls = useMemo(() => {
     const result: Record<string, string> = {};
     if (!key) return result;
     // Expiry is enforced in the effect above (it re-signs expired paths when the list changes);
@@ -76,4 +85,6 @@ export function useSignedUrls(paths: (string | null)[]): Record<string, string> 
     // `version` re-computes the map after the cache was filled.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, version]);
+
+  return { urls, retry };
 }

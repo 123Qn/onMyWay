@@ -65,7 +65,12 @@ export function ProfileTripList({
       data={trips.items}
       keyExtractor={(item) => item.id}
       renderItem={({ item }) => (
-        <TripCard trip={item} variant="compact" onPress={() => onPressTrip(item.id)} />
+        <TripCard
+          trip={item}
+          variant="compact"
+          onPress={() => onPressTrip(item.id)}
+          onCoverError={trips.retryCover}
+        />
       )}
       ItemSeparatorComponent={Separator}
       ListHeaderComponent={

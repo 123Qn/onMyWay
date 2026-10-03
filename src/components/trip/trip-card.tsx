@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { useRef } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -27,6 +28,8 @@ export type TripCardProps = {
   showAuthor?: boolean;
   onPress: () => void;
   onPressAuthor?: () => void;
+  /** Called at most once per card when the cover fails to load (parent re-signs the URL). */
+  onCoverError?: (coverPath: string) => void;
 };
 
 const THUMB = 88;
@@ -41,10 +44,16 @@ function postedLabel(iso: string): string {
   return formatRelativeLong(iso) || formatDateLong(iso);
 }
 
-type CoverProps = { uri: string | null; cacheKey: string | null; style: StyleProp<ViewStyle> };
+type CoverProps = {
+  uri: string | null;
+  cacheKey: string | null;
+  style: StyleProp<ViewStyle>;
+  onError?: (coverPath: string) => void;
+};
 
-function Cover({ uri, cacheKey, style }: CoverProps) {
+function Cover({ uri, cacheKey, style, onError }: CoverProps) {
   const theme = useTheme();
+  const retriedRef = useRef(false);
   return (
     <View style={[style, { backgroundColor: theme.primarySoft }]}>
       {uri ? (
@@ -55,6 +64,11 @@ function Cover({ uri, cacheKey, style }: CoverProps) {
           transition={150}
           cachePolicy="memory-disk"
           accessible={false}
+          onError={() => {
+            if (!cacheKey || retriedRef.current) return;
+            retriedRef.current = true;
+            onError?.(cacheKey);
+          }}
         />
       ) : (
         <View style={styles.placeholder}>
@@ -104,6 +118,7 @@ export function TripCard({
   showAuthor,
   onPress,
   onPressAuthor,
+  onCoverError,
 }: TripCardProps) {
   const theme = useTheme();
   const compact = variant === 'compact';
@@ -123,7 +138,12 @@ export function TripCard({
           styles.compact,
           { backgroundColor: theme.surface, opacity: pressed ? 0.9 : 1 },
         ]}>
-        <Cover uri={trip.coverUrl} cacheKey={trip.coverPath} style={styles.thumb} />
+        <Cover
+          uri={trip.coverUrl}
+          cacheKey={trip.coverPath}
+          style={styles.thumb}
+          onError={onCoverError}
+        />
         <View style={styles.compactBody}>
           <ThemedText type="subheading" numberOfLines={2}>
             {trip.title}
@@ -165,7 +185,12 @@ export function TripCard({
         accessibilityHint="Opens trip details"
         onPress={onPress}
         style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}>
-        <Cover uri={trip.coverUrl} cacheKey={trip.coverPath} style={styles.cover} />
+        <Cover
+          uri={trip.coverUrl}
+          cacheKey={trip.coverPath}
+          style={styles.cover}
+          onError={onCoverError}
+        />
         <View style={styles.body}>
           <ThemedText type="subheading" numberOfLines={2}>
             {trip.title}
