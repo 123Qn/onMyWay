@@ -1,30 +1,28 @@
-import { StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, Spacing } from '@/constants/theme';
+import { Avatar } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Screen } from '@/components/ui/screen';
+import { Spacing } from '@/constants/theme';
 
 export default function ProfileScreen() {
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="subtitle" accessibilityRole="header">
-          Profile
-        </ThemedText>
-      </SafeAreaView>
-    </ThemedView>
+    <Screen tabBarInset>
+      <ThemedText type="title" accessibilityRole="header">
+        Profile
+      </ThemedText>
+      <View style={styles.identity}>
+        <Avatar size="xl" name="Your Name" />
+        <ThemedText type="subheading">Your Name</ThemedText>
+        <ThemedText themeColor="textMuted">@username</ThemedText>
+      </View>
+      {/* TODO step 5: wire to the session sign-out. */}
+      <Button title="Sign out" variant="secondary" onPress={() => {}} disabled fullWidth />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  safeArea: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.three,
-    padding: Spacing.four,
-    paddingBottom: BottomTabInset + Spacing.four,
-  },
+  identity: { alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.four },
 });

@@ -1,0 +1,174 @@
+import { forwardRef, useCallback, useRef, useState } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  TextInput,
+  View,
+  type StyleProp,
+  type TextInputProps,
+  type ViewStyle,
+} from 'react-native';
+
+import { Icon } from './icon';
+import { IconButton } from './icon-button';
+
+import { ThemedText } from '@/components/themed-text';
+import { Layout, Radius, Spacing, Typography } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+
+export type TextFieldProps = Omit<TextInputProps, 'style' | 'value' | 'onChangeText'> & {
+  label: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  error?: string | null;
+  helperText?: string;
+  showCounter?: boolean;
+  containerStyle?: StyleProp<ViewStyle>;
+};
+
+export const TextField = forwardRef<TextInput, TextFieldProps>(function TextField(
+  {
+    label,
+    value,
+    onChangeText,
+    error,
+    helperText,
+    secureTextEntry = false,
+    maxLength,
+    showCounter = false,
+    multiline = false,
+    editable = true,
+    containerStyle,
+    onFocus,
+    onBlur,
+    ...rest
+  },
+  forwardedRef,
+) {
+  const theme = useTheme();
+  const inputRef = useRef<TextInput | null>(null);
+  const [focused, setFocused] = useState(false);
+  const [revealed, setRevealed] = useState(false);
+
+  const setRefs = useCallback(
+    (node: TextInput | null) => {
+      inputRef.current = node;
+      if (typeof forwardedRef === 'function') forwardedRef(node);
+      else if (forwardedRef) forwardedRef.current = node;
+    },
+    [forwardedRef],
+  );
+
+  const hasError = !!error;
+  const borderColor = hasError ? theme.danger : focused ? theme.primary : theme.borderStrong;
+  const counterAtLimit = maxLength !== undefined && value.length >= maxLength;
+  
+  return (
+    <View style={[styles.container, containerStyle]}>
+      <Pressable accessible={false} onPress={() => inputRef.current?.focus()}>
+        <ThemedText type="small" style={styles.label}>
+          {label}
+        </ThemedText>
+      </Pressable>
+
+      <View
+        style={[
+          styles.inputRow,
+          {
+            backgroundColor: editable ? theme.surface : theme.border,
+            borderColor,
+            borderWidth: 2,
+          },
+          !editable && styles.disabled,
+        ]}>
+        <TextInput
+          {...rest}
+          ref={setRefs}
+          value={value}
+          onChangeText={onChangeText}
+          maxLength={maxLength}
+          multiline={multiline}
+          editable={editable}
+          secureTextEntry={secureTextEntry && !revealed}
+          accessibilityLabel={label}
+          accessibilityHint={helperText}
+          placeholderTextColor={theme.textMuted}
+          selectionColor={theme.primary}
+          onFocus={(e) => {
+            setFocused(true);
+            onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            onBlur?.(e);
+          }}
+          style={[
+            styles.input,
+            { color: theme.text },
+            multiline && styles.multiline,
+          ]}
+        />
+        {secureTextEntry ? (
+          <IconButton
+            icon={revealed ? 'eye-off' : 'eye'}
+            accessibilityLabel={revealed ? 'Hide password' : 'Show password'}
+            onPress={() => setRevealed((v) => !v)}
+            disabled={!editable}
+            style={styles.toggle}
+          />
+        ) : null}
+      </View>
+
+      {error || helperText || (showCounter && maxLength !== undefined) ? (
+        <View style={styles.bottomRow}>
+          {hasError ? (
+            <View
+              style={styles.errorRow}
+              accessibilityRole="alert"
+              accessibilityLiveRegion="polite">
+              <Icon name="alert" size={Layout.iconSize.sm} color="danger" />
+              <ThemedText type="caption" themeColor="danger" style={styles.flex}>
+                {error}
+              </ThemedText>
+            </View>
+          ) : helperText ? (
+            <ThemedText type="caption" themeColor="textMuted" style={styles.flex}>
+              {helperText}
+            </ThemedText>
+          ) : (
+            <View style={styles.flex} />
+          )}
+          {showCounter && maxLength !== undefined ? (
+            <ThemedText type="caption" themeColor={counterAtLimit ? 'danger' : 'textMuted'}>
+              {`${value.length}/${maxLength}`}
+            </ThemedText>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
+  );
+});
+
+const styles = StyleSheet.create({
+  container: { gap: Spacing.one },
+  label: { fontWeight: '600' },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: Layout.controlHeight.md,
+    borderRadius: Radius.md,
+  },
+  input: {
+    flex: 1,
+    padding: Spacing.three,
+    fontSize: Typography.body.fontSize,
+    lineHeight: Typography.body.lineHeight,
+    fontWeight: Typography.body.fontWeight,
+  },
+  multiline: { minHeight: 96, textAlignVertical: 'top' },
+  toggle: { marginRight: Spacing.one },
+  disabled: { opacity: 0.5 },
+  bottomRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
+  errorRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
+  flex: { flex: 1 },
+});

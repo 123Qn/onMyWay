@@ -1,31 +1,28 @@
 import { StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Screen } from '@/components/ui/screen';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, Spacing } from '@/constants/theme';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export default function FeedScreen() {
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="subtitle" accessibilityRole="header">
-          Feed
-        </ThemedText>
-        <ThemedText themeColor="textSecondary">No trips yet.</ThemedText>
-      </SafeAreaView>
-    </ThemedView>
+    <Screen tabBarInset>
+      <ThemedText type="title" accessibilityRole="header">
+        Feed
+      </ThemedText>
+      <EmptyState
+        style={styles.empty}
+        icon="map"
+        title="No trips yet"
+        message="Be the first to share a journey."
+        actionLabel="Create your first trip"
+        // TODO step 8-10: navigate to the create-trip screen.
+        onAction={() => {}}
+      />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  safeArea: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.three,
-    padding: Spacing.four,
-    paddingBottom: BottomTabInset + Spacing.four,
-  },
+  empty: { flex: 1, justifyContent: 'center' },
 });
