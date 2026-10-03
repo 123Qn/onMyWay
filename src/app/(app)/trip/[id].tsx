@@ -183,12 +183,20 @@ export default function TripDetailScreen() {
         headerRight:
           isOwner && trip
             ? () => (
-                <IconButton
-                  icon="more"
-                  accessibilityLabel="Trip options"
-                  disabled={menuBusy || deleting}
-                  onPress={openMenu}
-                />
+                <View style={styles.headerActions}>
+                  <IconButton
+                    icon="edit"
+                    accessibilityLabel="Edit trip"
+                    disabled={menuBusy || deleting}
+                    onPress={() => router.push(`/trip/${trip.id}/edit`)}
+                  />
+                  <IconButton
+                    icon="more"
+                    accessibilityLabel="Trip options"
+                    disabled={menuBusy || deleting}
+                    onPress={openMenu}
+                  />
+                </View>
               )
             : undefined,
       }}
@@ -450,6 +458,7 @@ function TripSkeleton({ mapHeight }: { mapHeight: number }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   dim: { opacity: 0.6 },
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
   center: { textAlign: 'center' },
   skeleton: { gap: Spacing.three },
   banner: { margin: Spacing.three },

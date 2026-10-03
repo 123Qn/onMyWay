@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Pressable,
   StyleSheet,
   View,
   type TextInput,
@@ -14,10 +13,11 @@ import {
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { HeaderTextButton } from '@/components/ui/header-text-button';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Screen } from '@/components/ui/screen';
 import { TextField } from '@/components/ui/text-field';
-import { Layout, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useUsernameAvailability } from '@/hooks/use-username-availability';
 import { getAvatarUrl } from '@/lib/avatar-url';
@@ -375,39 +375,6 @@ export default function EditProfileScreen() {
   );
 }
 
-type HeaderTextButtonProps = {
-  label: string;
-  onPress: () => void;
-  disabled?: boolean;
-  loading?: boolean;
-  bold?: boolean;
-};
-
-function HeaderTextButton({ label, onPress, disabled, loading, bold }: HeaderTextButtonProps) {
-  const inactive = disabled || loading;
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled: !!inactive, busy: !!loading }}
-      disabled={inactive}
-      onPress={onPress}
-      hitSlop={8}
-      style={styles.headerButton}>
-      {loading ? (
-        <ActivityIndicator />
-      ) : (
-        <ThemedText
-          themeColor="primary"
-          type={bold ? 'bodyStrong' : 'default'}
-          style={disabled ? styles.headerDisabled : undefined}>
-          {label}
-        </ThemedText>
-      )}
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   avatarBlock: { alignItems: 'center', gap: Spacing.one },
   avatarOverlay: {
@@ -417,12 +384,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   note: { textAlign: 'center' },
-  headerButton: {
-    minHeight: Layout.minTouchTarget,
-    minWidth: Layout.minTouchTarget,
-    paddingHorizontal: Spacing.two,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerDisabled: { opacity: 0.4 },
 });

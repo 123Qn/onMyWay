@@ -23,7 +23,11 @@ export type IconName =
   | 'directions'
   | 'search'
   | 'locate'
-  | 'pin';
+  | 'pin'
+  | 'arrow-up'
+  | 'arrow-down'
+  | 'trash'
+  | 'edit';
 
 type SymbolName = Exclude<ComponentProps<typeof SymbolView>['name'], string>;
 
@@ -51,6 +55,10 @@ const ICONS: Record<IconName, Required<SymbolName>> = {
   search: { ios: 'magnifyingglass', android: 'search', web: 'search' },
   locate: { ios: 'location', android: 'my_location', web: 'my_location' },
   pin: { ios: 'mappin', android: 'location_on', web: 'location_on' },
+  'arrow-up': { ios: 'arrow.up', android: 'arrow_upward', web: 'arrow_upward' },
+  'arrow-down': { ios: 'arrow.down', android: 'arrow_downward', web: 'arrow_downward' },
+  trash: { ios: 'trash', android: 'delete', web: 'delete' },
+  edit: { ios: 'pencil', android: 'edit', web: 'edit' },
 };
 
 export type IconProps = {

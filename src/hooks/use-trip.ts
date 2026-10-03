@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { supabase } from '@/lib/supabase';
-import { emitTripEvent } from '@/lib/trip-events';
+import { emitTripEvent, subscribeTripEvents } from '@/lib/trip-events';
+import { listAll } from '@/lib/trip-storage';
 import { useSession } from '@/providers/session-provider';
 
 const BUCKET = 'trip-photos';
@@ -103,19 +104,6 @@ async function fetchTrip(id: string): Promise<Loaded> {
   }
 }
 
-/** Lists every object directly under `prefix` (paginated) and returns full paths. */
-async function listAll(prefix: string): Promise<string[] | null> {
-  const paths: string[] = [];
-  for (let offset = 0; ; offset += LIST_PAGE) {
-    const { data, error } = await supabase.storage
-      .from(BUCKET)
-      .list(prefix, { limit: LIST_PAGE, offset, sortBy: { column: 'name', order: 'asc' } });
-    if (error || !data) return null;
-    for (const item of data) paths.push(`${prefix}/${item.name}`);
-    if (data.length < LIST_PAGE) return paths;
-  }
-}
-
 export function useTrip(id: string): TripState {
   const { profile } = useSession();
   const [trip, setTrip] = useState<TripDetail | null>(null);
@@ -161,6 +149,18 @@ export function useTrip(id: string): TripState {
       requestRef.current++;
     };
   }, [start]);
+
+  // An edit saved elsewhere (the edit screen) refreshes this trip in place.
+  useEffect(
+    () =>
+      subscribeTripEvents((event) => {
+        if (event.type === 'updated' && event.id === id) {
+          const request = ++requestRef.current;
+          fetchTrip(id).then((result) => apply(request, 'refresh', result));
+        }
+      }),
+    [id, apply],
+  );
 
   const refresh = useCallback(async () => {
     setRefreshing(true);

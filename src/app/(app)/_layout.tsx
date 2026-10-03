@@ -10,7 +10,11 @@ export default function AppLayout() {
       <Stack.Screen name="trip/[id]" options={{ title: 'Trip' }} />
       <Stack.Screen
         name="trip/new"
-        options={{ presentation: 'fullScreenModal', headerShown: false }}
+        options={{ presentation: 'fullScreenModal', title: 'New trip', gestureEnabled: false }}
+      />
+      <Stack.Screen
+        name="trip/[id]/edit"
+        options={{ presentation: 'fullScreenModal', title: 'Edit trip', gestureEnabled: false }}
       />
       <Stack.Screen
         name="profile/edit"

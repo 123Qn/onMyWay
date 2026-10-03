@@ -1,4 +1,4 @@
-import type { ReactElement, ReactNode } from 'react';
+import type { ReactElement, ReactNode, Ref } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -26,6 +26,8 @@ export type ScreenProps = {
   maxWidth?: number;
   contentContainerStyle?: StyleProp<ViewStyle>;
   refreshControl?: ReactElement<RefreshControlProps>;
+  /** Forwarded to the internal ScrollView (scroll mode only). */
+  scrollRef?: Ref<ScrollView>;
   testID?: string;
 };
 
@@ -42,6 +44,7 @@ export function Screen({
   maxWidth = MaxContentWidth,
   contentContainerStyle,
   refreshControl,
+  scrollRef,
   testID,
 }: ScreenProps) {
   const theme = useTheme();
@@ -59,6 +62,7 @@ export function Screen({
 
   const body = scroll ? (
     <ScrollView
+      ref={scrollRef}
       style={styles.flex}
       refreshControl={refreshControl}
       contentContainerStyle={[

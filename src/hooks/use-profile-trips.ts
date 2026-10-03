@@ -149,6 +149,14 @@ export function useProfileTrips({ ownerId, publicOnly }: Options): ProfileTrips 
   useEffect(
     () =>
       subscribeTripEvents((event) => {
+        if (event.type === 'created' || event.type === 'updated') {
+          // Only the owner's own list can contain a trip they just created or edited.
+          if (!ownerId || publicOnly) return;
+          const request = ++requestRef.current;
+          loadingMoreRef.current = false;
+          fetchFirst(ownerId, publicOnly).then((result) => applyFirst(request, 'refresh', result));
+          return;
+        }
         if (!rowsRef.current.some((r) => r.id === event.id)) return;
         if (event.type === 'visibility' && !(publicOnly && event.visibility === 'private')) {
           rowsRef.current = rowsRef.current.map((r) =>
@@ -160,7 +168,7 @@ export function useProfileTrips({ ownerId, publicOnly }: Options): ProfileTrips 
         }
         setRows(rowsRef.current);
       }),
-    [publicOnly],
+    [ownerId, publicOnly, applyFirst],
   );
 
   const refresh = useCallback(async () => {

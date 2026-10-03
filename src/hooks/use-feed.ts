@@ -104,11 +104,18 @@ export function useFeed(): Feed {
   useEffect(
     () =>
       subscribeTripEvents((event) => {
+        if (event.type === 'created' || event.type === 'updated') {
+          // Re-read the first page so the new or edited trip shows at once.
+          const request = ++requestRef.current;
+          loadingMoreRef.current = false;
+          fetchPage(null).then((page) => applyFirst(request, 'refresh', page));
+          return;
+        }
         if (event.type === 'visibility' && event.visibility === 'public') return;
         rowsRef.current = rowsRef.current.filter((r) => r.trip_id !== event.id);
         setRows(rowsRef.current);
       }),
-    [],
+    [applyFirst],
   );
 
   const refresh = useCallback(async () => {

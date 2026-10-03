@@ -1,6 +1,8 @@
 /** Tiny in-memory bus so lists that are already mounted can react to trip changes. */
 export type TripEvent =
   | { type: 'removed'; id: string }
+  | { type: 'created'; id: string }
+  | { type: 'updated'; id: string }
   | { type: 'visibility'; id: string; visibility: 'public' | 'private' };
 
 type Listener = (event: TripEvent) => void;
