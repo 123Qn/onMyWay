@@ -16,7 +16,9 @@ export type ThemedTextProps = TextProps & {
     | 'display'
     | 'subheading'
     | 'bodyStrong'
-    | 'caption';
+    | 'caption'
+    | 'heading'
+    | 'statValue';
   themeColor?: ThemeColor;
 };
 
@@ -30,7 +32,11 @@ export function ThemedText({
   const theme = useTheme();
   const isLink = type === 'link' || type === 'linkPrimary';
   const color = theme[themeColor ?? (isLink ? 'primary' : 'text')];
-  const defaultMultiplier = type === 'title' || type === 'display' ? 1.6 : undefined;
+  const defaultMultiplier = type === 'title' || type === 'display' || type === 'statValue'
+      ? 1.6
+      : type === 'heading'
+        ? 1.8
+        : undefined;
 
   return (
     <Text
@@ -59,4 +65,6 @@ const typeStyles = StyleSheet.create({
   subheading: Typography.subheading,
   bodyStrong: Typography.bodyStrong,
   caption: Typography.caption,
+  heading: Typography.heading,
+  statValue: { ...Typography.statValue, fontVariant: ['tabular-nums'] },
 });

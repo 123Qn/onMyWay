@@ -60,6 +60,7 @@ function StopMarker({ stop, selected, onPress }: StopMarkerProps) {
             height: size,
             borderRadius: size / 2,
             backgroundColor: selected ? theme.text : theme.primary,
+            borderColor: theme.onImage,
           },
         ]}>
         <Text
@@ -220,7 +221,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#FFFFFF',
   },
   markerText: { fontSize: 14, fontWeight: '700' },
 });

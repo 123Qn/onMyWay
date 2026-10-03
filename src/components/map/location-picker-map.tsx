@@ -97,7 +97,7 @@ export const LocationPickerMap = forwardRef<LocationPickerMapHandle, LocationPic
           <View pointerEvents="none" style={styles.pinLayer}>
             <View style={[styles.shadow, { backgroundColor: theme.overlay }]} />
             <Animated.View style={[styles.pin, { transform: [{ translateY: lift }] }]}>
-              <Icon name="pin" size={PIN_SIZE + HALO * 2} color="#FFFFFF" style={styles.halo} />
+              <Icon name="pin" size={PIN_SIZE + HALO * 2} color="onImage" style={styles.halo} />
               <Icon name="pin" size={PIN_SIZE} color="primary" />
             </Animated.View>
           </View>

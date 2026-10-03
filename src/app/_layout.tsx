@@ -1,11 +1,13 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import * as SystemUI from 'expo-system-ui';
+import { useEffect, useMemo } from 'react';
 import { useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { ProfileLoadError } from '@/components/profile-load-error';
+import { useTheme } from '@/hooks/use-theme';
 import { SessionProvider, needsUsername, useSession } from '@/providers/session-provider';
 
 SplashScreen.preventAutoHideAsync();
@@ -51,9 +53,31 @@ function RootStack() {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const theme = useTheme();
+
+  // Navigation theme built from tokens so transitions never flash white/black.
+  const navigationTheme = useMemo(() => {
+    const base = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
+    return {
+      ...base,
+      colors: {
+        ...base.colors,
+        background: theme.background,
+        card: theme.background,
+        text: theme.text,
+        border: theme.border,
+        primary: theme.primary,
+      },
+    };
+  }, [colorScheme, theme]);
+
+  useEffect(() => {
+    SystemUI.setBackgroundColorAsync(theme.background).catch(() => {});
+  }, [theme.background]);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <ThemeProvider value={navigationTheme}>
         <SessionProvider>
           <RootStack />
         </SessionProvider>

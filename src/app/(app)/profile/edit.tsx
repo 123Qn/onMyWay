@@ -286,7 +286,7 @@ export default function EditProfileScreen() {
             />
             {saving && avatar.kind === 'picked' ? (
               <View style={[styles.avatarOverlay, { backgroundColor: theme.overlay }]}>
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color={theme.onImage} />
               </View>
             ) : null}
           </View>

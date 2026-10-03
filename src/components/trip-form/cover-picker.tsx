@@ -64,7 +64,7 @@ export function CoverPicker({
         ) : null}
         {picking ? (
           <View style={[StyleSheet.absoluteFill, styles.spinner, { backgroundColor: theme.overlay }]}>
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={theme.onImage} />
           </View>
         ) : null}
       </Pressable>

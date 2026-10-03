@@ -130,7 +130,7 @@ function PhotoViewer({ photos, startIndex, onClose, onRetryPhoto }: PhotoViewerP
                   />
                 ) : (
                   <View style={styles.center}>
-                    <Icon name="image" size={Layout.iconSize.xl} color="#FFFFFF" />
+                    <Icon name="image" size={Layout.iconSize.xl} color="onImage" />
                   </View>
                 )}
               </View>
@@ -138,7 +138,7 @@ function PhotoViewer({ photos, startIndex, onClose, onRetryPhoto }: PhotoViewerP
           />
         ) : null}
         <View style={[styles.viewerTop, { paddingTop: insets.top + Spacing.two }]}>
-          <ThemedText type="caption" style={styles.pageText}>
+          <ThemedText type="caption" themeColor="onImage">
             {`${page + 1} / ${photos.length}`}
           </ThemedText>
           <Pressable
@@ -146,7 +146,7 @@ function PhotoViewer({ photos, startIndex, onClose, onRetryPhoto }: PhotoViewerP
             accessibilityLabel="Close photo viewer"
             onPress={onClose}
             style={styles.close}>
-            <Icon name="close" size={Layout.iconSize.md} color="#FFFFFF" />
+            <Icon name="close" size={Layout.iconSize.md} color="onImage" />
           </Pressable>
         </View>
       </View>
@@ -169,7 +169,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.three,
   },
-  pageText: { color: '#FFFFFF' },
   close: {
     width: Layout.minTouchTarget,
     height: Layout.minTouchTarget,

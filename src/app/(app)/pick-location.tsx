@@ -27,8 +27,7 @@ import { ErrorBanner } from '@/components/ui/error-banner';
 import { Icon } from '@/components/ui/icon';
 import { IconButton } from '@/components/ui/icon-button';
 import { Screen } from '@/components/ui/screen';
-import { Layout, Radius, Spacing } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Layout, Radius, Spacing, shadow } from '@/constants/theme';
 import { usePlaceSearch } from '@/hooks/use-place-search';
 import { useTheme } from '@/hooks/use-theme';
 import { reversePlace, type PlaceResult } from '@/lib/nominatim';
@@ -88,7 +87,6 @@ export default function PickLocationScreen() {
   const startLng = parseCoord(firstParam(params.lng), 180);
 
   const theme = useTheme();
-  const dark = useColorScheme() === 'dark';
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { height: windowHeight } = useWindowDimensions();
@@ -305,18 +303,7 @@ export default function PickLocationScreen() {
   };
 
   const keyboardVisible = keyboardHeight > 0;
-  const cardShadow: ViewStyle = dark
-    ? {}
-    : Platform.select<ViewStyle>({
-        ios: {
-          shadowColor: '#000',
-          shadowOpacity: 0.18,
-          shadowRadius: 6,
-          shadowOffset: { width: 0, height: 2 },
-        },
-        android: { elevation: 3 },
-        default: {},
-      }) ?? {};
+  const cardShadow: ViewStyle = shadow(theme, 'lg');
 
   const header = (
     <Stack.Screen

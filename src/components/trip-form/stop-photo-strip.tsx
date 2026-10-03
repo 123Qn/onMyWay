@@ -84,7 +84,7 @@ export function StopPhotoStrip({
               onPress={() => onRemove(stopId, p.id)}
               style={styles.close}>
               <View style={[styles.closeGlyph, { backgroundColor: theme.overlay }]}>
-                <Icon name="close" size={14} color="#FFFFFF" />
+                <Icon name="close" size={14} color="onImage" />
               </View>
             </Pressable>
           </View>

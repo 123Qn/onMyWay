@@ -417,8 +417,8 @@ export default function TripDetailScreen() {
           onStartShouldSetResponder={() => true}
           accessibilityViewIsModal
           accessibilityLiveRegion="polite">
-          <ActivityIndicator size="large" color="#FFFFFF" />
-          <ThemedText style={styles.overlayText}>Deleting trip...</ThemedText>
+          <ActivityIndicator size="large" color={theme.onImage} />
+          <ThemedText themeColor="onImage">Deleting trip...</ThemedText>
         </View>
       ) : null}
     </Screen>
@@ -494,5 +494,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.three,
   },
-  overlayText: { color: '#FFFFFF' },
 });
