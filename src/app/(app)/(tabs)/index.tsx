@@ -1,7 +1,9 @@
 import { router } from 'expo-router';
-import type { ReactElement } from 'react';
+import { useEffect, useRef, type ReactElement } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated';
 
+import { FeedHeader } from '@/components/feed/feed-header';
 import { ThemedText } from '@/components/themed-text';
 import { TripCard, TripCardSkeleton } from '@/components/trip/trip-card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +14,11 @@ import { Screen } from '@/components/ui/screen';
 import { SkeletonGroup } from '@/components/ui/skeleton';
 import { Layout, Spacing } from '@/constants/theme';
 import { useFeed } from '@/hooks/use-feed';
+import { useGreeting } from '@/hooks/use-greeting';
 import { useTheme } from '@/hooks/use-theme';
+import { useSession } from '@/providers/session-provider';
+
+const ANIMATED_CARDS = 4;
 
 function Separator() {
   return <View style={styles.separator} />;
@@ -21,12 +27,19 @@ function Separator() {
 export default function FeedScreen() {
   const theme = useTheme();
   const feed = useFeed();
+  const { profile } = useSession();
+  const { greeting, refresh: refreshGreeting } = useGreeting();
+  const reduceMotion = useReducedMotion();
+  // Entrance animation only for the first cards of the initial load, never for pages or refreshes.
+  const introDone = useRef(false);
+  useEffect(() => {
+    if (feed.items.length > 0) introDone.current = true;
+  }, [feed.items.length]);
 
   let emptyNode: ReactElement;
   if (feed.status === 'loading') {
     emptyNode = (
       <SkeletonGroup style={styles.skeletons}>
-        <TripCardSkeleton variant="feed" />
         <TripCardSkeleton variant="feed" />
         <TripCardSkeleton variant="feed" />
       </SkeletonGroup>
@@ -55,7 +68,9 @@ export default function FeedScreen() {
   } else if (feed.loadMoreError) {
     footer = (
       <View style={styles.footerRow}>
-        <ThemedText themeColor="textMuted">Could not load more trips.</ThemedText>
+        <ThemedText type="caption" themeColor="textMuted">
+          Could not load more trips.
+        </ThemedText>
         <Button title="Retry" variant="ghost" size="sm" onPress={feed.retryLoadMore} />
       </View>
     );
@@ -72,29 +87,34 @@ export default function FeedScreen() {
 
   return (
     <Screen tabBarInset padded={false} keyboardAvoiding={false}>
-      <View style={styles.header}>
-        <ThemedText type="title" accessibilityRole="header">
-          Feed
-        </ThemedText>
-      </View>
       <FlatList
         data={feed.items}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TripCard
-            trip={item}
-            variant="feed"
-            showAuthor
-            onPress={() => router.push(`/trip/${item.id}`)}
-            onPressAuthor={() => item.author && router.push(`/user/${item.author.username}`)}
-            onCoverError={feed.retryCover}
-          />
+        renderItem={({ item, index }) => (
+          <Animated.View
+            entering={
+              !introDone.current && !reduceMotion && index < ANIMATED_CARDS
+                ? FadeInDown.duration(250).delay(60 * index)
+                : undefined
+            }>
+            <TripCard
+              trip={item}
+              variant="feed"
+              showAuthor
+              onPress={() => router.push(`/trip/${item.id}`)}
+              onPressAuthor={() => item.author && router.push(`/user/${item.author.username}`)}
+              onCoverError={feed.retryCover}
+            />
+          </Animated.View>
         )}
         ItemSeparatorComponent={Separator}
         ListHeaderComponent={
-          feed.refreshError ? (
-            <ErrorBanner message="Could not refresh the feed." style={styles.banner} />
-          ) : null
+          <View style={styles.headerBlock}>
+            <FeedHeader greeting={greeting} profile={profile} />
+            {feed.refreshError ? (
+              <ErrorBanner message="Could not refresh the feed." style={styles.banner} />
+            ) : null}
+          </View>
         }
         ListEmptyComponent={emptyNode}
         ListFooterComponent={footer}
@@ -106,7 +126,10 @@ export default function FeedScreen() {
             refreshing={feed.refreshing}
             tintColor={theme.primary}
             colors={[theme.primary]}
-            onRefresh={feed.refresh}
+            onRefresh={() => {
+              refreshGreeting();
+              void feed.refresh();
+            }}
           />
         }
         initialNumToRender={4}
@@ -118,15 +141,17 @@ export default function FeedScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.three,
+  headerBlock: { gap: Spacing.three },
+  content: {
+    flexGrow: 1,
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
+    paddingHorizontal: Spacing.three,
   },
-  content: { flexGrow: 1, padding: Spacing.three, paddingTop: 0 },
   separator: { height: Spacing.three },
   skeletons: { gap: Spacing.three },
-  banner: { marginBottom: Spacing.three },
+  banner: {},
   footer: { padding: Spacing.three, alignItems: 'center' },
   footerRow: {
     flexDirection: 'row',
