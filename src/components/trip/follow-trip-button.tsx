@@ -15,12 +15,15 @@ import {
   GOOGLE_MAX_POINTS,
   type MapPoint,
 } from '@/lib/maps-links';
+import type { TravelMode } from '@/lib/trip-form';
 
 export type FollowStop = MapPoint & { number: number };
 
 export type FollowTripButtonProps = {
   /** Sorted in route order. */
   stops: FollowStop[];
+  /** Stored travel mode of the trip; default driving. */
+  travelMode?: TravelMode;
   /** Called when no maps app could open the route. */
   onOpenError: () => void;
   onLayout?: (event: LayoutChangeEvent) => void;
@@ -41,7 +44,7 @@ async function openUrl(url: string, onError: () => void) {
 type Provider = 'google' | 'apple';
 
 /** "Follow this trip" button floating over a bottom fade, plus the maps / part pickers. */
-export function FollowTripButton({ stops, onOpenError, onLayout }: FollowTripButtonProps) {
+export function FollowTripButton({ stops, travelMode = 'driving', onOpenError, onLayout }: FollowTripButtonProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
@@ -59,7 +62,7 @@ export function FollowTripButton({ stops, onOpenError, onLayout }: FollowTripBut
     const legs = splitIntoLegs(route, GOOGLE_MAX_POINTS);
 
     const openLeg = (provider: Provider, leg: FollowStop[]) => {
-      const url = provider === 'google' ? googleDirectionsUrl(leg) : appleDirectionsUrl(leg);
+      const url = provider === 'google' ? googleDirectionsUrl(leg, travelMode) : appleDirectionsUrl(leg, travelMode);
       void openUrl(url, onOpenError);
     };
 

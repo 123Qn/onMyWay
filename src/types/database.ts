@@ -123,6 +123,89 @@ export type Database = {
           },
         ]
       }
+      route_requests: {
+        Row: {
+          id: number
+          requested_at: string
+          trip_id: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: never
+          requested_at?: string
+          trip_id?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: never
+          requested_at?: string
+          trip_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "route_requests_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "route_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_routes: {
+        Row: {
+          computed_at: string
+          distance_m: number | null
+          duration_s: number | null
+          polyline: string | null
+          reason: string | null
+          status: string
+          stop_count: number
+          stops_hash: string
+          travel_mode: string
+          trip_id: string
+        }
+        Insert: {
+          computed_at?: string
+          distance_m?: number | null
+          duration_s?: number | null
+          polyline?: string | null
+          reason?: string | null
+          status: string
+          stop_count: number
+          stops_hash: string
+          travel_mode: string
+          trip_id: string
+        }
+        Update: {
+          computed_at?: string
+          distance_m?: number | null
+          duration_s?: number | null
+          polyline?: string | null
+          reason?: string | null
+          status?: string
+          stop_count?: number
+          stops_hash?: string
+          travel_mode?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_routes_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: true
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trips: {
         Row: {
           cover_path: string | null
@@ -131,6 +214,7 @@ export type Database = {
           id: string
           owner_id: string
           title: string
+          travel_mode: string
           updated_at: string
           visibility: string
         }
@@ -141,6 +225,7 @@ export type Database = {
           id?: string
           owner_id: string
           title: string
+          travel_mode?: string
           updated_at?: string
           visibility?: string
         }
@@ -151,6 +236,7 @@ export type Database = {
           id?: string
           owner_id?: string
           title?: string
+          travel_mode?: string
           updated_at?: string
           visibility?: string
         }
@@ -187,6 +273,49 @@ export type Database = {
           trip_id: string
           username: string
         }[]
+      }
+      claim_route_request: {
+        Args: { p_trip_id: string }
+        Returns: undefined
+      }
+      get_trip_route: {
+        Args: { p_trip_id: string }
+        Returns: {
+          computed_at: string
+          distance_m: number | null
+          duration_s: number | null
+          is_fresh: boolean
+          polyline: string | null
+          reason: string | null
+          route_status: string | null
+          travel_mode: string
+          trip_id: string
+        }[]
+      }
+      get_trip_routing_input: {
+        Args: { p_trip_id: string }
+        Returns: {
+          coords: Json
+          stop_count: number
+          stops_hash: string
+          travel_mode: string
+        }[]
+      }
+      save_trip_route: {
+        Args: {
+          p_distance_m: number | null
+          p_duration_s: number | null
+          p_polyline: string | null
+          p_reason: string | null
+          p_status: string
+          p_stops_hash: string
+          p_trip_id: string
+        }
+        Returns: boolean
+      }
+      trip_route_signature: {
+        Args: { p_trip_id: string }
+        Returns: string
       }
       get_profile_stats: {
         Args: { p_user_id: string }

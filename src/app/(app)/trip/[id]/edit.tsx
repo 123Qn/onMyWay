@@ -15,7 +15,7 @@ import { useTripForm } from '@/hooks/use-trip-form';
 import { useUnsavedGuard } from '@/hooks/use-unsaved-guard';
 import { isRetryable, tripErrorMessage } from '@/lib/trip-errors';
 import { emitTripEvent } from '@/lib/trip-events';
-import { normalizeForm, type TripFormValues } from '@/lib/trip-form';
+import { needsRoute, normalizeForm, type TripFormValues } from '@/lib/trip-form';
 import { saveTripEdits, type SaveProgress } from '@/lib/trip-save';
 import { removePaths } from '@/lib/trip-storage';
 import { useSession } from '@/providers/session-provider';
@@ -27,6 +27,7 @@ function toForm(trip: TripDetail): TripFormValues {
     title: trip.title,
     description: trip.description ?? '',
     visibility: trip.visibility,
+    travelMode: trip.travelMode,
     // The storage path doubles as a stable id for the existing cover.
     cover: trip.coverPath ? { id: trip.coverPath, uri: null, path: trip.coverPath } : null,
     stops: trip.stops.map((s) => ({
@@ -184,7 +185,9 @@ function EditTripForm({ trip }: { trip: TripDetail }) {
       setSaveLabel(
         p.step === 'photos' && p.total > 0
           ? `Uploading photos ${p.done} of ${p.total}`
-          : 'Saving changes...',
+          : p.step === 'route'
+            ? 'Calculating route...'
+            : 'Saving changes...',
       );
     };
     const result = await saveTripEdits({
@@ -195,7 +198,9 @@ function EditTripForm({ trip }: { trip: TripDetail }) {
         title: trip.title,
         description: trip.description,
         visibility: trip.visibility,
+        travelMode: trip.travelMode,
       },
+      routeNeeded: needsRoute(initial.form, formRef.current, trip.route?.status ?? null),
       form: formRef.current,
       uploadedThisAttempt: uploaded.current,
       onProgress,

@@ -47,3 +47,7 @@ example
 # Supabase CLI
 supabase/.temp
 supabase/.branches
+
+# Supabase CLI: function secrets and local link state
+supabase/functions/.env
+supabase/.temp/

@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { classifyTripError, type ErrorKind } from '@/lib/trip-errors';
 import {
+  hasRoutableStops,
   normalizeText,
   pendingUploads,
   toStopsPayload,
@@ -8,11 +9,18 @@ import {
   type PathPatch,
   type TripFormValues,
 } from '@/lib/trip-form';
+import { computeTripRoute, type RouteOutcome } from '@/lib/trip-route';
 import { listAll, removePaths, removePrefix, uploadJpeg } from '@/lib/trip-storage';
 import type { Json } from '@/types/database';
 
-export type PublishStep = 'trip' | 'photos' | 'stops' | 'finish';
-export type PublishProgress = { step: PublishStep; done: number; total: number };
+export type PublishStep = 'trip' | 'photos' | 'stops' | 'route' | 'finish';
+export type PublishProgress = {
+  step: PublishStep;
+  done: number;
+  total: number;
+  /** Outcome of the route step; set on the steps after it (absent when routing was skipped). */
+  route?: RouteOutcome;
+};
 
 export type PublishResult =
   | { ok: true }
@@ -44,9 +52,21 @@ export async function publishTrip(args: PublishArgs): Promise<PublishResult> {
       title: form.title.trim(),
       description: normalizeText(form.description),
       visibility: 'private',
+      travel_mode: form.travelMode,
     });
     if (insert.error && insert.error.code !== '23505') {
       return { ok: false, step, kind: classifyTripError(insert.error) };
+    }
+    if (insert.error) {
+      // Retry after a partial publish: the mode may have changed since, and routing reads it from the row.
+      const mode = await supabase
+        .from('trips')
+        .update({ travel_mode: form.travelMode })
+        .eq('id', tripId)
+        .select('id')
+        .maybeSingle();
+      if (mode.error) return { ok: false, step, kind: classifyTripError(mode.error) };
+      if (!mode.data) return { ok: false, step, kind: 'not_owner' };
     }
 
     // 2. Uploads (only what has no path yet), then the cover pointer.
@@ -106,9 +126,17 @@ export async function publishTrip(args: PublishArgs): Promise<PublishResult> {
     });
     if (rpc.error) return { ok: false, step, kind: classifyTripError(rpc.error) };
 
-    // 4. Visibility last: the trip stays private until everything else worked.
+    // 4. Road route. Never fails the publish: any problem becomes a straight-line fallback.
+    let route: RouteOutcome | undefined;
+    if (hasRoutableStops(patched.stops)) {
+      step = 'route';
+      onProgress({ step, done: 0, total: 0 });
+      route = await computeTripRoute(tripId);
+    }
+
+    // 5. Visibility last: the trip stays private until everything else worked.
     step = 'finish';
-    onProgress({ step, done: 0, total: 0 });
+    onProgress({ step, done: 0, total: 0, route });
     const visibility = await supabase
       .from('trips')
       .update({ visibility: form.visibility })
@@ -120,7 +148,7 @@ export async function publishTrip(args: PublishArgs): Promise<PublishResult> {
     }
     if (!visibility.data) return { ok: false, step, kind: 'not_owner' };
 
-    // 5. Best-effort sweep of uploads that no row references (lost responses on retries).
+    // 6. Best-effort sweep of uploads that no row references (lost responses on retries).
     try {
       const referenced = new Set<string>(patched.stops.flatMap((s) => s.photos.map((p) => p.path ?? '')));
       if (paths.cover) referenced.add(paths.cover);

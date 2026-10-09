@@ -30,7 +30,10 @@ export type IconName =
   | 'edit'
   | 'route'
   | 'calendar'
-  | 'camera';
+  | 'camera'
+  | 'car'
+  | 'walk'
+  | 'bike';
 
 type SymbolName = Exclude<ComponentProps<typeof SymbolView>['name'], string>;
 
@@ -69,6 +72,9 @@ const ICONS: Record<IconName, Required<SymbolName>> = {
   },
   calendar: { ios: 'calendar', android: 'calendar_today', web: 'calendar_today' },
   camera: { ios: 'camera', android: 'photo_camera', web: 'photo_camera' },
+  car: { ios: 'car', android: 'directions_car', web: 'directions_car' },
+  walk: { ios: 'figure.walk', android: 'directions_walk', web: 'directions_walk' },
+  bike: { ios: 'bicycle', android: 'directions_bike', web: 'directions_bike' },
 };
 
 export type IconProps = {

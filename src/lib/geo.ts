@@ -44,12 +44,22 @@ export function formatDistance(km: number | null): string {
   return `${withThousands(Math.round(km))} km`;
 }
 
+function spokenDistance(text: string): string {
+  return text.endsWith(' km')
+    ? `${text.slice(0, -3)} ${text === '1 km' ? 'kilometre' : 'kilometres'}`
+    : `${text.slice(0, -2)} metres`;
+}
+
 /** Spoken form of the distance, e.g. "About 12.4 kilometres in a straight line". */
 export function distanceA11yLabel(km: number | null): string {
   const text = formatDistance(km);
   if (text === '-') return 'Distance not available';
-  const spoken = text.endsWith(' km')
-    ? `${text.slice(0, -3)} ${text === '1 km' ? 'kilometre' : 'kilometres'}`
-    : `${text.slice(0, -2)} metres`;
-  return `About ${spoken} in a straight line`;
+  return `About ${spokenDistance(text)} in a straight line`;
+}
+
+/** Spoken form of a road distance, e.g. "12.4 kilometres by road, driving". */
+export function roadDistanceA11yLabel(km: number, mode: 'driving' | 'walking' | 'cycling'): string {
+  const text = formatDistance(km);
+  if (text === '-') return 'Distance not available';
+  return `${spokenDistance(text)} ${mode === 'driving' ? 'by road' : 'by path and road'}, ${mode}`;
 }

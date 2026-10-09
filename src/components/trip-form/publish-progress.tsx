@@ -19,6 +19,8 @@ export type PublishProgressProps = {
   progress?: Progress | null;
   /** Upload counter of this attempt; null/zero total hides the photos row and bar. */
   photos?: { done: number; total: number } | null;
+  /** False hides the "Calculating route" row (fewer than 2 distinct stops). */
+  routing?: boolean;
   failure?: PublishFailure | null;
   /** Save variant: current label, e.g. "Uploading photos 2 of 5". */
   label?: string;
@@ -31,16 +33,20 @@ const STEPS: { step: PublishStep; label: string }[] = [
   { step: 'trip', label: 'Creating your trip' },
   { step: 'photos', label: 'Uploading photos' },
   { step: 'stops', label: 'Saving stops' },
+  { step: 'route', label: 'Calculating route' },
   { step: 'finish', label: 'Finishing up' },
 ];
 
-type Status = 'pending' | 'active' | 'done' | 'failed';
+type Status = 'pending' | 'active' | 'done' | 'failed' | 'skipped';
+
+const ROUTE_SKIPPED_DETAIL = 'Straight lines used';
 
 /** Blocking overlay used while publishing, saving edits or discarding a half-published trip. */
 export function PublishProgress({
   variant,
   progress,
   photos = null,
+  routing = false,
   failure,
   label,
   onRetry,
@@ -52,7 +58,10 @@ export function PublishProgress({
   const simpleLabel =
     variant === 'discard' ? 'Discarding...' : (label ?? 'Saving changes...');
   const showPhotos = !!photos && photos.total > 0;
-  const steps = showPhotos ? STEPS : STEPS.filter((s) => s.step !== 'photos');
+  const steps = STEPS.filter(
+    (s) => (s.step !== 'photos' || showPhotos) && (s.step !== 'route' || routing),
+  );
+  const routeFailed = !!progress?.route && progress.route.status !== 'ok';
   const order = STEPS.map((s) => s.step);
   const current = failure?.step ?? progress?.step ?? 'trip';
 
@@ -60,7 +69,7 @@ export function PublishProgress({
     const i = order.indexOf(step);
     const c = order.indexOf(current);
     if (failure && step === failure.step) return 'failed';
-    if (i < c) return 'done';
+    if (i < c) return step === 'route' && routeFailed ? 'skipped' : 'done';
     if (i === c) return 'active';
     return 'pending';
   };
@@ -93,14 +102,21 @@ export function PublishProgress({
                 const isPhotos = s.step === 'photos';
                 const total = isPhotos ? (photos?.total ?? 0) : 0;
                 const done = isPhotos ? (photos?.done ?? 0) : 0;
+                const skipped = status === 'skipped';
                 return (
                   <View key={s.step}>
-                    <View style={styles.row}>
+                    <View
+                      collapsable={false}
+                      style={styles.row}
+                      accessible={skipped}
+                      accessibilityLabel={skipped ? `${s.label}. ${ROUTE_SKIPPED_DETAIL}.` : undefined}>
                       <View style={styles.statusIcon}>
                         {status === 'active' ? (
                           <ActivityIndicator size="small" />
                         ) : status === 'done' ? (
                           <Icon name="check" size={Layout.iconSize.md} color="success" />
+                        ) : skipped ? (
+                          <Icon name="alert" size={Layout.iconSize.md} color="textMuted" />
                         ) : status === 'failed' ? (
                           <Icon name="alert" size={Layout.iconSize.md} color="danger" />
                         ) : (
@@ -115,6 +131,11 @@ export function PublishProgress({
                       {isPhotos && total > 0 ? (
                         <ThemedText type="caption" themeColor="textMuted">
                           {`${done} of ${total}`}
+                        </ThemedText>
+                      ) : null}
+                      {skipped ? (
+                        <ThemedText type="caption" themeColor="textMuted">
+                          {ROUTE_SKIPPED_DETAIL}
                         </ThemedText>
                       ) : null}
                     </View>

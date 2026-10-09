@@ -23,6 +23,7 @@ import { FollowTripButton } from '@/components/trip/follow-trip-button';
 import { CollapsibleText } from '@/components/trip/collapsible-text';
 import { StopListItem } from '@/components/trip/stop-list-item';
 import { TripPhotoStrip } from '@/components/trip/photo-strip';
+import { RouteNotice } from '@/components/trip/route-notice';
 import { TripMap, type TripMapHandle } from '@/components/trip/trip-map';
 import { Avatar } from '@/components/ui/avatar';
 import { Gradient } from '@/components/ui/gradient';
@@ -41,7 +42,23 @@ import { useStackScreenOptions } from '@/hooks/use-stack-screen-options';
 import { useTrip, type TripDetail } from '@/hooks/use-trip';
 import { getAvatarUrl } from '@/lib/avatar-url';
 import { formatDateLong, formatDateShort } from '@/lib/format-date';
-import { distanceA11yLabel, formatDistance, routeDistanceKm } from '@/lib/geo';
+import { durationA11yLabel, formatDuration } from '@/lib/format-duration';
+import {
+  distanceA11yLabel,
+  formatDistance,
+  roadDistanceA11yLabel,
+  routeDistanceKm,
+} from '@/lib/geo';
+import { decodePolyline } from '@/lib/polyline';
+import type { TravelMode } from '@/lib/trip-form';
+
+const MODE_ICON = { driving: 'car', walking: 'walk', cycling: 'bike' } as const;
+
+const ROUTE_CAPTION: Record<TravelMode, string> = {
+  driving: 'Route along roads for driving.',
+  walking: 'Route along paths and roads for walking.',
+  cycling: 'Route along roads and bike paths for cycling.',
+};
 
 const EDGES: Edge[] = ['left', 'right'];
 const DEFAULT_BAR_HEIGHT = 96;
@@ -57,8 +74,18 @@ export default function TripDetailScreen() {
   const stackOptions = useStackScreenOptions();
   const reduceMotion = useReducedMotion();
   const { height: windowHeight } = useWindowDimensions();
-  const { trip, status, isOwner, refreshing, refreshError, refresh, retry, setVisibility, remove } =
-    useTrip(id);
+  const {
+    trip,
+    status,
+    isOwner,
+    refreshing,
+    refreshError,
+    refresh,
+    retry,
+    refreshRoute,
+    setVisibility,
+    remove,
+  } = useTrip(id);
 
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const [barHeight, setBarHeight] = useState(DEFAULT_BAR_HEIGHT);
@@ -95,6 +122,14 @@ export default function TripDetailScreen() {
       })),
     [trip],
   );
+
+  // Decoded once per stored route (never per render). Null = draw dashed straight lines.
+  const roadRoute = useMemo(() => {
+    const route = trip?.route;
+    if (!route || route.status !== 'ok' || !route.polyline) return null;
+    const points = decodePolyline(route.polyline);
+    return points.length >= 2 ? points : null;
+  }, [trip?.route]);
 
   // Block Android back while the delete is running.
   useEffect(() => {
@@ -265,14 +300,27 @@ export default function TripDetailScreen() {
     })),
   );
 
+  const travelMode = trip.travelMode;
+  const modeIcon = MODE_ICON[travelMode];
+  const roadKm =
+    roadRoute && trip.route?.distanceM != null ? trip.route.distanceM / 1000 : null;
+  // A road distance that rounds to nothing is not shown as a road route stat.
+  const hasRoadDistance = roadKm !== null && formatDistance(roadKm) !== '-';
+  const roadDuration =
+    roadRoute && trip.route?.durationS != null ? trip.route.durationS : null;
   const distanceKm = routeDistanceKm(trip.stops);
-  const distanceText = formatDistance(distanceKm);
+  const distanceText = formatDistance(hasRoadDistance ? roadKm : distanceKm);
+  const distanceA11y = hasRoadDistance
+    ? roadDistanceA11yLabel(roadKm, travelMode)
+    : distanceA11yLabel(distanceKm);
+  const routeStatus = trip.route?.status ?? null;
+  const showNotice = isOwner && trip.stops.length >= 2 && (routeStatus === 'error' || routeStatus === 'none');
   const stopsLabel = trip.stops.length === 1 ? 'Stop' : 'Stops';
   const publishedShort = formatDateShort(trip.createdAt);
   const publishedLong = formatDateLong(trip.createdAt);
   const tilesLabel = [
     stopCountLabel(trip.stops.length),
-    distanceA11yLabel(distanceKm),
+    distanceA11y,
     `Published ${publishedLong}`,
   ].join('. ');
   const coverFallback = Gradients.coverFallbacks[coverFallbackIndex(trip.id)];
@@ -354,7 +402,7 @@ export default function TripDetailScreen() {
             </ThemedText>
           ) : null}
 
-          <Pressable
+          <Pressable collapsable={false}
             disabled={!author.username}
             accessibilityRole="button"
             accessibilityLabel={`${author.displayName}, @${author.username}. View profile`}
@@ -380,8 +428,8 @@ export default function TripDetailScreen() {
           <View style={styles.tiles} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
             <InfoTile icon="pin" value={String(trip.stops.length)} label={stopsLabel} />
             <InfoTile
-              icon="route"
-              value={distanceText === '-' ? '-' : `~${distanceText}`}
+              icon={hasRoadDistance ? modeIcon : 'route'}
+              value={distanceText === '-' || hasRoadDistance ? distanceText : `~${distanceText}`}
               label="Distance"
             />
             <InfoTile icon="calendar" value={publishedShort} label="Published" />
@@ -418,23 +466,52 @@ export default function TripDetailScreen() {
               onLayout={(e) => {
                 routeY.current = e.nativeEvent.layout.y;
               }}>
-              <ThemedText type="heading" accessibilityRole="header">
-                Route
-              </ThemedText>
-              <View style={[styles.mapShadow, shadow(theme, 'md'), { backgroundColor: theme.surface }]}>
-                <View style={styles.mapClip}>
+              <View style={styles.sectionHeader}>
+                <ThemedText type="heading" accessibilityRole="header">
+                  Route
+                </ThemedText>
+                {roadDuration !== null ? (
+                  <View
+                    style={styles.duration}
+                    accessible
+                    accessibilityLabel={durationA11yLabel(roadDuration)}>
+                    <Icon name={modeIcon} size={14} color="textMuted" />
+                    <ThemedText type="caption" themeColor="textMuted">
+                      {`~${formatDuration(roadDuration)}`}
+                    </ThemedText>
+                  </View>
+                ) : null}
+              </View>
+              {showNotice && routeStatus ? (
+                <RouteNotice
+                  status={routeStatus}
+                  reason={trip.route?.reason ?? null}
+                  travelMode={travelMode}
+                  tripId={trip.id}
+                  onRecomputed={refreshRoute}
+                  onEdit={() => router.push(`/trip/${trip.id}/edit`)}
+                />
+              ) : null}
+              <View
+                collapsable={false}
+                style={[styles.mapShadow, shadow(theme, 'md'), { backgroundColor: theme.surface }]}>
+                <View collapsable={false} style={styles.mapClip}>
                   <TripMap
                     ref={mapRef}
                     stops={mapStops}
                     selectedStopId={selectedStopId}
                     onSelectStop={handleSelectFromMap}
                     height={mapHeight}
+                    route={roadRoute}
+                    travelMode={travelMode}
                   />
                 </View>
               </View>
               {trip.stops.length >= 2 ? (
                 <ThemedText type="caption" themeColor="textMuted">
-                  Lines connect the stops in order. They are not a driving route.
+                  {roadRoute
+                    ? ROUTE_CAPTION[travelMode]
+                    : 'Lines connect the stops in order. They do not follow roads.'}
                 </ThemedText>
               ) : null}
             </View>
@@ -488,6 +565,7 @@ export default function TripDetailScreen() {
 
       <FollowTripButton
         stops={mapStops}
+        travelMode={travelMode}
         onOpenError={() => setOpenError(true)}
         onLayout={(e) => setBarHeight(e.nativeEvent.layout.height)}
       />
@@ -571,6 +649,7 @@ const styles = StyleSheet.create({
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three - Spacing.one, minHeight: 56 },
   tiles: { flexDirection: 'row', gap: Spacing.three - Spacing.one },
   section: { gap: Spacing.three - Spacing.one },
+  duration: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   sectionHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   photoSkeletons: { flexDirection: 'row', gap: Spacing.three - Spacing.one },
   mapShadow: { borderRadius: Radius.xl },

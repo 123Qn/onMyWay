@@ -3,6 +3,7 @@ import { useRef, type ReactNode } from 'react';
 
 import { CoverPicker } from './cover-picker';
 import { StopEditorCard } from './stop-editor-card';
+import { TravelModePicker } from './travel-mode-picker';
 import { VisibilityPicker } from './visibility-picker';
 
 import { ThemedText } from '@/components/themed-text';
@@ -121,7 +122,10 @@ export function TripForm({
         />
       </View>
 
-      <VisibilityPicker value={form.visibility} disabled={disabled} onChange={actions.setVisibility} />
+      <View style={styles.settings}>
+        <VisibilityPicker value={form.visibility} disabled={disabled} onChange={actions.setVisibility} />
+        <TravelModePicker value={form.travelMode} disabled={disabled} onChange={actions.setTravelMode} />
+      </View>
 
       <View
         style={styles.section}
@@ -226,6 +230,7 @@ export function TripForm({
 const styles = StyleSheet.create({
   root: { gap: Spacing.four },
   section: { gap: Spacing.three },
+  settings: { gap: Spacing.three },
   stopsHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   cards: { gap: Spacing.three },
   emptyStops: {

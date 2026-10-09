@@ -6,15 +6,22 @@ import {
   toStopsPayload,
   tripFilePath,
   type PathPatch,
+  type TravelMode,
   type TripFormValues,
 } from '@/lib/trip-form';
+import { computeTripRoute, type RouteOutcome } from '@/lib/trip-route';
 import { removePaths, uploadJpeg } from '@/lib/trip-storage';
 import type { Json } from '@/types/database';
 
-export type SaveProgress = { step: 'photos' | 'save'; done: number; total: number };
+export type SaveProgress = { step: 'photos' | 'save' | 'route'; done: number; total: number };
 
 export type SaveResult =
-  | { ok: true; removed: string[] }
+  | {
+      ok: true;
+      removed: string[];
+      /** Outcome of the route step; null when routing was not needed. Never a failure of the save. */
+      route: RouteOutcome | null;
+    }
   | {
       ok: false;
       kind: ErrorKind;
@@ -30,7 +37,14 @@ export type SaveArgs = {
   tripId: string;
   initialCoverPath: string | null;
   /** Server values before the edit; restored if the stops RPC fails after the trip row was updated. */
-  initialTrip: { title: string; description: string | null; visibility: 'public' | 'private' };
+  initialTrip: {
+    title: string;
+    description: string | null;
+    visibility: 'public' | 'private';
+    travelMode: TravelMode;
+  };
+  /** Compute the road route after the stops were saved (see `needsRoute`). */
+  routeNeeded: boolean;
   form: TripFormValues;
   /** Mutated: every path uploaded during this edit session (survives retries). */
   uploadedThisAttempt: Set<string>;
@@ -44,8 +58,17 @@ function isDefinite(kind: ErrorKind): boolean {
 }
 
 export async function saveTripEdits(args: SaveArgs): Promise<SaveResult> {
-  const { userId, tripId, initialCoverPath, initialTrip, form, uploadedThisAttempt, onProgress, onFormPatch } =
-    args;
+  const {
+    userId,
+    tripId,
+    initialCoverPath,
+    initialTrip,
+    routeNeeded,
+    form,
+    uploadedThisAttempt,
+    onProgress,
+    onFormPatch,
+  } = args;
   let uploading = true;
   let photoId: string | undefined;
   let rowUpdated = false;
@@ -60,6 +83,7 @@ export async function saveTripEdits(args: SaveArgs): Promise<SaveResult> {
           description: initialTrip.description,
           cover_path: initialCoverPath,
           visibility: initialTrip.visibility,
+          travel_mode: initialTrip.travelMode,
         })
         .eq('id', tripId)
         .select('id')
@@ -120,6 +144,7 @@ export async function saveTripEdits(args: SaveArgs): Promise<SaveResult> {
         description: normalizeText(form.description),
         cover_path: coverPath,
         visibility: form.visibility,
+        travel_mode: form.travelMode,
       })
       .eq('id', tripId)
       .select('id')
@@ -148,7 +173,14 @@ export async function saveTripEdits(args: SaveArgs): Promise<SaveResult> {
     if (initialCoverPath && initialCoverPath !== coverPath) removed.push(initialCoverPath);
     await removePaths(removed);
     uploadedThisAttempt.clear();
-    return { ok: true, removed };
+
+    // 5. Road route. The save already succeeded: routing problems only mean straight lines.
+    let route: RouteOutcome | null = null;
+    if (routeNeeded) {
+      onProgress({ step: 'route', done: 0, total: 0 });
+      route = await computeTripRoute(tripId);
+    }
+    return { ok: true, removed, route };
   } catch (e) {
     return await fail(classifyTripError(e));
   }
