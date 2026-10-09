@@ -77,7 +77,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
   
   return (
     <View style={[styles.container, containerStyle]}>
-      <Pressable accessible={false} onPress={() => inputRef.current?.focus()}>
+      <Pressable collapsable={false} accessible={false} onPress={() => inputRef.current?.focus()}>
         <ThemedText type="small" style={styles.label}>
           {label}
         </ThemedText>

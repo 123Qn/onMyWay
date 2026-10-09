@@ -29,7 +29,7 @@ export function VisibilityPicker({ value, disabled, onChange }: VisibilityPicker
         {OPTIONS.map((o) => {
           const selected = o.value === value;
           return (
-            <Pressable
+            <Pressable collapsable={false}
               key={o.value}
               accessibilityRole="radio"
               accessibilityLabel={`${o.title}. ${o.caption}`}

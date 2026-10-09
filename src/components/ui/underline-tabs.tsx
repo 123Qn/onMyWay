@@ -76,7 +76,7 @@ export function UnderlineTabs({ tabs, value, onChange, style, testID }: Underlin
           );
         }
         return (
-          <Pressable
+          <Pressable collapsable={false}
             key={tab.key}
             accessibilityRole="tab"
             accessibilityLabel={tab.label}

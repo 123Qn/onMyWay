@@ -61,7 +61,7 @@ export function Chip({
   }
 
   return (
-    <Pressable
+    <Pressable collapsable={false}
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}

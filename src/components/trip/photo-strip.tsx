@@ -47,7 +47,7 @@ export function PhotoStrip({ photos, stopName, onRetryPhoto }: PhotoStripProps) 
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.strip}
         renderItem={({ item, index }) => (
-          <Pressable
+          <Pressable collapsable={false}
             accessibilityRole="button"
             accessibilityLabel={`Photo ${index + 1} of ${photos.length} from ${stopName}`}
             onPress={() => setViewerIndex(index)}
@@ -115,7 +115,7 @@ export function TripPhotoStrip({ photos, onRetryPhoto }: TripPhotoStripProps) {
         renderItem={({ item, index }) => {
           const showMore = extra > 0 && index === MAX_TRIP_TILES;
           return (
-            <Pressable
+            <Pressable collapsable={false}
               accessibilityRole="button"
               accessibilityLabel={
                 showMore

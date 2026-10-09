@@ -73,6 +73,7 @@ export const LocationPickerMap = forwardRef<LocationPickerMapHandle, LocationPic
         accessibilityLabel="Map. The pin marks the chosen place. Use the search field or Use my location to choose without dragging the map."
         style={[StyleSheet.absoluteFill, { backgroundColor: theme.surface }]}>
         <View
+          collapsable={false}
           style={StyleSheet.absoluteFill}
           importantForAccessibility="no-hide-descendants"
           accessibilityElementsHidden>

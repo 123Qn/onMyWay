@@ -41,7 +41,7 @@ export function IconButton({
   const box = BOX[size];
 
   return (
-    <Pressable
+    <Pressable collapsable={false}
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}

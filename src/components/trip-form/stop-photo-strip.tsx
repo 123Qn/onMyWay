@@ -76,7 +76,7 @@ export function StopPhotoStrip({
                 />
               ) : null}
             </View>
-            <Pressable
+            <Pressable collapsable={false}
               accessibilityRole="button"
               accessibilityLabel={`Remove photo ${i + 1}`}
               accessibilityState={{ disabled }}
@@ -95,7 +95,7 @@ export function StopPhotoStrip({
           <ActivityIndicator />
         </View>
       ) : remaining > 0 ? (
-        <Pressable
+        <Pressable collapsable={false}
           accessibilityRole="button"
           accessibilityLabel={`Add photo to stop ${stopNumber}`}
           accessibilityHint={`You can add ${remaining} more`}

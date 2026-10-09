@@ -50,7 +50,7 @@ export function StopListItem({
           borderColor: selected ? theme.primary : 'transparent',
         },
       ]}>
-      <Pressable
+      <Pressable collapsable={false}
         accessibilityRole="button"
         accessibilityLabel={`Stop ${index}: ${stop.name}`}
         accessibilityHint="Shows this stop on the map"

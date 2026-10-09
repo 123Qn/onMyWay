@@ -126,7 +126,7 @@ function StopEditorCardImpl({
       />
 
       <View style={styles.locationRow}>
-        <Pressable
+        <Pressable collapsable={false}
           accessibilityRole="button"
           accessibilityLabel={`Location: ${where}. Change location`}
           accessibilityState={{ disabled }}

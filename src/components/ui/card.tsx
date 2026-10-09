@@ -54,7 +54,7 @@ export function Card({
   }
 
   return (
-    <Pressable
+    <Pressable collapsable={false}
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}

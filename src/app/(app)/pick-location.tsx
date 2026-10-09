@@ -359,8 +359,9 @@ export default function PickLocationScreen() {
       {header}
       <Screen padded={false} edges={['left', 'right']} keyboardAvoiding={false}>
         <View style={styles.flex}>
-          {initial ? (
-            <View style={styles.flex} pointerEvents={confirming ? 'none' : 'auto'}>
+          {/* Always mounted: the map is added INSIDE this slot, never ahead of its siblings (Fabric). */}
+          <View collapsable={false} style={styles.flex} pointerEvents={confirming ? 'none' : 'auto'}>
+            {initial ? (
               <LocationPickerMap
                 ref={mapRef}
                 initialRegion={initial}
@@ -369,8 +370,8 @@ export default function PickLocationScreen() {
                 onCenterChange={onCenterChange}
                 onMapTouch={onMapTouch}
               />
-            </View>
-          ) : null}
+            ) : null}
+          </View>
 
           <View style={styles.top} pointerEvents="box-none">
             <View
@@ -397,9 +398,15 @@ export default function PickLocationScreen() {
                 accessibilityHint="Press search on the keyboard to see results"
                 style={[styles.input, { color: theme.text }]}
               />
-              {text.length > 0 ? (
+              {/* Always mounted (hidden when empty) so the search bar structure never changes. */}
+              <View
+                collapsable={false}
+                pointerEvents={text.length > 0 ? 'auto' : 'none'}
+                accessibilityElementsHidden={text.length === 0}
+                importantForAccessibility={text.length > 0 ? 'auto' : 'no-hide-descendants'}
+                style={text.length > 0 ? undefined : styles.hiddenControl}>
                 <IconButton icon="close" accessibilityLabel="Clear search" onPress={clearSearch} />
-              ) : null}
+              </View>
             </View>
 
             {notice ? (
@@ -433,29 +440,41 @@ export default function PickLocationScreen() {
             ) : null}
           </View>
 
-          {!keyboardVisible ? (
-            <>
+          {/* Always mounted; hidden while the keyboard is open so nothing remounts on toggle (Fabric). */}
+          <>
               {!IS_WEB ? (
-                <IconButton
-                  icon="locate"
-                  size="lg"
-                  variant="filled"
-                  accessibilityLabel="Use my location"
-                  loading={locating}
-                  disabled={confirming}
-                  onPress={locate}
+                <View
+                  collapsable={false}
+                  pointerEvents={keyboardVisible ? 'none' : 'box-none'}
+                  importantForAccessibility={keyboardVisible ? 'no-hide-descendants' : 'auto'}
+                  accessibilityElementsHidden={keyboardVisible}
                   style={[
+                    keyboardVisible && styles.hiddenControl,
                     styles.locate,
-                    { bottom: barHeight + Spacing.three, borderColor: theme.border },
-                    cardShadow,
-                  ]}
-                />
+                    { bottom: barHeight + Spacing.three },
+                  ]}>
+                  <IconButton
+                    icon="locate"
+                    size="lg"
+                    variant="filled"
+                    accessibilityLabel="Use my location"
+                    loading={locating}
+                    disabled={confirming || keyboardVisible}
+                    onPress={locate}
+                    style={[{ borderWidth: 1, borderColor: theme.border }, cardShadow]}
+                  />
+                </View>
               ) : null}
 
               <View
-                accessible
+                collapsable={false}
+                accessible={!keyboardVisible}
                 accessibilityRole="text"
+                pointerEvents={keyboardVisible ? 'none' : 'auto'}
+                importantForAccessibility={keyboardVisible ? 'no-hide-descendants' : 'auto'}
+                accessibilityElementsHidden={keyboardVisible}
                 style={[
+                  keyboardVisible && styles.hiddenControl,
                   styles.attribution,
                   { bottom: barHeight + Spacing.two, backgroundColor: theme.surface },
                 ]}>
@@ -465,8 +484,13 @@ export default function PickLocationScreen() {
               </View>
 
               <View
+                collapsable={false}
+                pointerEvents={keyboardVisible ? 'none' : 'auto'}
+                importantForAccessibility={keyboardVisible ? 'no-hide-descendants' : 'auto'}
+                accessibilityElementsHidden={keyboardVisible}
                 onLayout={(e) => setBarHeight(e.nativeEvent.layout.height)}
                 style={[
+                  keyboardVisible && styles.hiddenControl,
                   styles.bar,
                   {
                     backgroundColor: theme.background,
@@ -474,17 +498,20 @@ export default function PickLocationScreen() {
                     paddingBottom: Math.max(insets.bottom, Spacing.three),
                   },
                 ]}>
-                <View style={styles.barRow}>
+                <View collapsable={false} style={styles.barRow}>
                   <Icon name="pin" size={Layout.iconSize.lg} color="primary" />
-                  <View style={styles.barText} accessibilityLiveRegion="polite">
+                  <View collapsable={false} style={styles.barText} accessibilityLiveRegion="polite">
                     <ThemedText type="bodyStrong" numberOfLines={2}>
                       {labelTitle}
                     </ThemedText>
-                    {labelCaption ? (
-                      <ThemedText type="caption" themeColor="textMuted" numberOfLines={2}>
-                        {labelCaption}
-                      </ThemedText>
-                    ) : null}
+                    {/* Always mounted; empty text collapses to no height. */}
+                    <ThemedText
+                      type="caption"
+                      themeColor="textMuted"
+                      numberOfLines={2}
+                      style={labelCaption ? undefined : styles.emptyCaption}>
+                      {labelCaption ?? ''}
+                    </ThemedText>
                   </View>
                 </View>
                 <Button
@@ -498,8 +525,7 @@ export default function PickLocationScreen() {
                   onPress={confirm}
                 />
               </View>
-            </>
-          ) : null}
+          </>
         </View>
       </Screen>
     </>
@@ -539,7 +565,6 @@ const styles = StyleSheet.create({
   locate: {
     position: 'absolute',
     right: Spacing.three,
-    borderWidth: 1,
   },
   attribution: {
     position: 'absolute',
@@ -560,4 +585,7 @@ const styles = StyleSheet.create({
   },
   barRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   barText: { flex: 1 },
+  // Hidden but still mounted: no height for an empty caption, no visibility for hidden controls.
+  emptyCaption: { height: 0 },
+  hiddenControl: { opacity: 0 },
 });

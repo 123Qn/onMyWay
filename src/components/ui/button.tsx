@@ -70,7 +70,7 @@ export function Button({
   const iconNode = icon ? <Icon name={icon} size={Layout.iconSize.md} color={textColor} /> : null;
 
   return (
-    <Pressable
+    <Pressable collapsable={false}
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? title}
@@ -100,7 +100,7 @@ export function Button({
         disabled && styles.disabled,
         style,
       ]}>
-      <View style={[styles.content, loading && styles.hidden]}>
+      <View collapsable={false} style={[styles.content, loading && styles.hidden]}>
         {iconPosition === 'left' ? iconNode : null}
         <ThemedText type={size === 'sm' ? 'smallBold' : 'bodyStrong'} themeColor={textColor}>
           {title}
@@ -108,7 +108,7 @@ export function Button({
         {iconPosition === 'right' ? iconNode : null}
       </View>
       {loading ? (
-        <View style={styles.spinner}>
+        <View collapsable={false} style={styles.spinner}>
           <ActivityIndicator color={theme[textColor]} />
         </View>
       ) : null}

@@ -29,7 +29,7 @@ export function CoverPicker({
 
   return (
     <View style={styles.wrap}>
-      <Pressable
+      <Pressable collapsable={false}
         accessibilityRole="button"
         accessibilityLabel={hasCover ? 'Change cover photo' : 'Add cover photo'}
         accessibilityHint="Opens your photo library"

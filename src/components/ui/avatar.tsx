@@ -48,6 +48,7 @@ export function Avatar({
 
   const circle = (
     <View
+      collapsable={false}
       testID={onPress ? undefined : testID}
       accessible={!onPress}
       accessibilityRole={onPress ? undefined : 'image'}
@@ -82,7 +83,7 @@ export function Avatar({
 
   const slop = Math.max(0, (Layout.minTouchTarget - px) / 2);
   return (
-    <Pressable
+    <Pressable collapsable={false}
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={label}

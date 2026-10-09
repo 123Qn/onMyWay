@@ -19,7 +19,7 @@ const ROUTE_ICONS: Record<string, IconName> = { index: 'home', profile: 'person'
 function CreateButton() {
   const theme = useTheme();
   return (
-    <Pressable
+    <Pressable collapsable={false}
       accessibilityRole="button"
       accessibilityLabel="Create trip"
       accessibilityHint="Opens the new trip form"
@@ -58,7 +58,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
     };
 
     return (
-      <Pressable
+      <Pressable collapsable={false}
         key={route.key}
         accessibilityRole="tab"
         accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
@@ -67,7 +67,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
         onPress={onPress}
         onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
         style={styles.tab}>
-        <View style={[styles.capsule, focused && { backgroundColor: theme.primarySoft }]}>
+        <View collapsable={false} style={[styles.capsule, focused && { backgroundColor: theme.primarySoft }]}>
           <Icon name={ROUTE_ICONS[route.name] ?? 'home'} size={Layout.iconSize.lg} color={iconColor} />
         </View>
         <ThemedText

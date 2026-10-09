@@ -69,7 +69,7 @@ export function PhotoViewer({ photos, startIndex, onClose, onRetryPhoto }: Photo
           <ThemedText type="caption" themeColor="onImage">
             {`${page + 1} / ${photos.length}`}
           </ThemedText>
-          <Pressable
+          <Pressable collapsable={false}
             accessibilityRole="button"
             accessibilityLabel="Close photo viewer"
             onPress={onClose}

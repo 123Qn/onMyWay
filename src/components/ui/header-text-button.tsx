@@ -17,7 +17,7 @@ export type HeaderTextButtonProps = {
 export function HeaderTextButton({ label, onPress, disabled, loading, bold, tone = 'primary' }: HeaderTextButtonProps) {
   const inactive = disabled || loading;
   return (
-    <Pressable
+    <Pressable collapsable={false}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: !!inactive, busy: !!loading }}

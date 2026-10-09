@@ -118,7 +118,7 @@ function AuthorRow({
 }) {
   if (!author) return null;
   return (
-    <Pressable
+    <Pressable collapsable={false}
       disabled={!onPressAuthor}
       accessibilityRole={onPressAuthor ? "button" : undefined}
       accessibilityLabel={`${author.displayName}, @${author.username}. View profile`}
@@ -176,7 +176,7 @@ function FeedCard({
   const stacked = fontScale >= STACKED_FONT_SCALE;
 
   const mainButton = (
-    <Pressable
+    <Pressable collapsable={false}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityHint="Opens trip details"
@@ -296,7 +296,7 @@ function GridTile({
       ]}
     >
       <View style={styles.clip}>
-        <Pressable
+        <Pressable collapsable={false}
           accessibilityRole="button"
           accessibilityLabel={label}
           accessibilityHint="Opens trip details"
