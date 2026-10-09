@@ -138,8 +138,6 @@ export const Spacing = {
   six: 64,
 } as const;
 
-/** @deprecated Replaced by `useTabBarInset()` in the tab-bar step. */
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
 
 export const Radius = { xs: 6, sm: 10, md: 14, lg: 20, xl: 28, xxl: 36, full: 9999 } as const;

@@ -27,6 +27,7 @@ import { ErrorBanner } from '@/components/ui/error-banner';
 import { Icon } from '@/components/ui/icon';
 import { IconButton } from '@/components/ui/icon-button';
 import { Screen } from '@/components/ui/screen';
+import { useIsDark } from '@/hooks/use-is-dark';
 import { FontFamily, Layout, Radius, Spacing, shadow } from '@/constants/theme';
 import { usePlaceSearch } from '@/hooks/use-place-search';
 import { useTheme } from '@/hooks/use-theme';
@@ -87,6 +88,7 @@ export default function PickLocationScreen() {
   const startLng = parseCoord(firstParam(params.lng), 180);
 
   const theme = useTheme();
+  const isDark = useIsDark();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { height: windowHeight } = useWindowDimensions();
@@ -304,6 +306,11 @@ export default function PickLocationScreen() {
 
   const keyboardVisible = keyboardHeight > 0;
   const cardShadow: ViewStyle = shadow(theme, 'lg');
+  // Dark surfaces hide shadows, so floating cards get a hairline there (DESIGN.md 2.6).
+  const cardEdge: ViewStyle | undefined = isDark
+    ? { borderWidth: 1, borderColor: theme.border }
+    : undefined;
+  const bottomOffset = Math.max(insets.bottom, 12);
 
   const header = (
     <Stack.Screen
@@ -377,7 +384,8 @@ export default function PickLocationScreen() {
             <View
               style={[
                 styles.searchBar,
-                { backgroundColor: theme.surface, borderColor: theme.border },
+                { backgroundColor: theme.surface },
+                cardEdge,
                 cardShadow,
               ]}>
               <Icon name="search" size={Layout.iconSize.md} color="textMuted" style={styles.searchIcon} />
@@ -426,7 +434,8 @@ export default function PickLocationScreen() {
               <View
                 style={[
                   styles.results,
-                  { backgroundColor: theme.surface, borderColor: theme.border, maxHeight: listMax },
+                  { backgroundColor: theme.surface, maxHeight: listMax },
+                  cardEdge,
                   cardShadow,
                 ]}>
                 <PlaceResultList
@@ -451,17 +460,17 @@ export default function PickLocationScreen() {
                   style={[
                     keyboardVisible && styles.hiddenControl,
                     styles.locate,
-                    { bottom: barHeight + Spacing.three },
+                    { bottom: barHeight + bottomOffset + Spacing.three },
                   ]}>
                   <IconButton
                     icon="locate"
                     size="lg"
-                    variant="filled"
+                    variant="glass"
                     accessibilityLabel="Use my location"
                     loading={locating}
                     disabled={confirming || keyboardVisible}
                     onPress={locate}
-                    style={[{ borderWidth: 1, borderColor: theme.border }, cardShadow]}
+                    style={cardShadow}
                   />
                 </View>
               ) : null}
@@ -476,7 +485,7 @@ export default function PickLocationScreen() {
                 style={[
                   keyboardVisible && styles.hiddenControl,
                   styles.attribution,
-                  { bottom: barHeight + Spacing.two, backgroundColor: theme.surface },
+                  { bottom: barHeight + bottomOffset + Spacing.two, backgroundColor: theme.surface },
                 ]}>
                 <ThemedText type="caption" themeColor="textMuted">
                   © OpenStreetMap contributors
@@ -492,11 +501,9 @@ export default function PickLocationScreen() {
                 style={[
                   keyboardVisible && styles.hiddenControl,
                   styles.bar,
-                  {
-                    backgroundColor: theme.background,
-                    borderTopColor: theme.border,
-                    paddingBottom: Math.max(insets.bottom, Spacing.three),
-                  },
+                  { backgroundColor: theme.surface, bottom: bottomOffset },
+                  cardEdge,
+                  cardShadow,
                 ]}>
                 <View collapsable={false} style={styles.barRow}>
                   <Icon name="pin" size={Layout.iconSize.lg} color="primary" />
@@ -544,22 +551,20 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: Layout.controlHeight.md,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
+    minHeight: Layout.inputHeight,
+    borderRadius: Radius.full,
     paddingLeft: Spacing.three,
   },
   searchIcon: { marginRight: Spacing.two },
   input: {
     flex: 1,
-    minHeight: Layout.controlHeight.md,
+    minHeight: Layout.inputHeight,
     fontSize: 16,
     fontFamily: FontFamily.regular,
     paddingVertical: Spacing.two,
   },
   results: {
     borderRadius: Radius.lg,
-    borderWidth: 1,
     overflow: 'hidden',
   },
   locate: {
@@ -576,10 +581,9 @@ const styles = StyleSheet.create({
   },
   bar: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderTopWidth: 1,
+    left: Spacing.three,
+    right: Spacing.three,
+    borderRadius: Radius.xl,
     padding: Spacing.three,
     gap: Spacing.three,
   },

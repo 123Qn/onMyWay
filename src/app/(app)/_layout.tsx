@@ -1,10 +1,13 @@
 import { Stack } from 'expo-router';
 
+import { useStackScreenOptions } from '@/hooks/use-stack-screen-options';
+
 export const unstable_settings = { initialRouteName: '(tabs)' };
 
 export default function AppLayout() {
+  const screenOptions = useStackScreenOptions();
   return (
-    <Stack>
+    <Stack screenOptions={screenOptions}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="user/[username]" options={{ title: 'Profile' }} />
       <Stack.Screen name="trip/[id]" options={{ title: 'Trip' }} />

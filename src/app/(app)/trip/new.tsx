@@ -301,7 +301,7 @@ export default function NewTripScreen() {
       options={{
         gestureEnabled: false,
         headerLeft: () => (
-          <HeaderTextButton label="Cancel" disabled={busy} onPress={() => router.back()} />
+          <HeaderTextButton label="Cancel" tone="neutral" disabled={busy} onPress={() => router.back()} />
         ),
         headerRight: () => (
           <HeaderTextButton

@@ -52,7 +52,7 @@ export default function EditTripScreen() {
     <Stack.Screen
       options={{
         gestureEnabled: false,
-        headerLeft: () => <HeaderTextButton label="Cancel" onPress={() => router.back()} />,
+        headerLeft: () => <HeaderTextButton label="Cancel" tone="neutral" onPress={() => router.back()} />,
         headerRight: () => <HeaderTextButton label="Save" bold disabled onPress={() => {}} />,
       }}
     />
@@ -229,7 +229,7 @@ function EditTripForm({ trip }: { trip: TripDetail }) {
         options={{
           gestureEnabled: false,
           headerLeft: () => (
-            <HeaderTextButton label="Cancel" disabled={saving} onPress={() => router.back()} />
+            <HeaderTextButton label="Cancel" tone="neutral" disabled={saving} onPress={() => router.back()} />
           ),
           headerRight: () => (
             <HeaderTextButton

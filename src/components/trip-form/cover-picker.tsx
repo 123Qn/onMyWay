@@ -1,11 +1,12 @@
 import { Image } from 'expo-image';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { FontFamily, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { COVER_ASPECT } from '@/lib/trip-images';
 
 export type CoverPickerProps = {
   /** Local file or signed URL of the current cover; null = no cover. */
@@ -26,6 +27,9 @@ export function CoverPicker({
   onRemove,
 }: CoverPickerProps) {
   const theme = useTheme();
+  const { height: windowHeight } = useWindowDimensions();
+  // 4:5 preview: full width, but never taller than 60% of the window (width = 0.6 * H * 4/5).
+  const maxWidth = (windowHeight * 0.6 * COVER_ASPECT[0]) / COVER_ASPECT[1];
 
   return (
     <View style={styles.wrap}>
@@ -38,6 +42,7 @@ export function CoverPicker({
         onPress={onPick}
         style={[
           styles.box,
+          { maxWidth },
           hasCover
             ? { backgroundColor: theme.primarySoft }
             : {
@@ -94,8 +99,9 @@ const styles = StyleSheet.create({
   wrap: { gap: Spacing.one },
   box: {
     width: '100%',
-    aspectRatio: 16 / 9,
-    borderRadius: Radius.lg,
+    alignSelf: 'center',
+    aspectRatio: 4 / 5,
+    borderRadius: Radius.xl,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
@@ -103,5 +109,5 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', gap: Spacing.one },
   label: { fontFamily: FontFamily.semibold },
   spinner: { alignItems: 'center', justifyContent: 'center' },
-  actions: { flexDirection: 'row', gap: Spacing.two },
+  actions: { flexDirection: 'row', gap: Spacing.two, justifyContent: 'center' },
 });

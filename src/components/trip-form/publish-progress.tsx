@@ -3,7 +3,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
-import { Layout, Radius, Spacing } from '@/constants/theme';
+import { Layout, Radius, Spacing, shadow } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { PublishProgress as Progress, PublishStep } from '@/lib/trip-publish';
 
@@ -81,7 +81,7 @@ export function PublishProgress({
       accessibilityViewIsModal
       onStartShouldSetResponder={() => true}
       style={[styles.scrim, { backgroundColor: theme.overlay }]}>
-      <View style={[styles.card, { backgroundColor: theme.surface }]}>
+      <View style={[styles.card, { backgroundColor: theme.surface }, shadow(theme, 'lg')]}>
         {simple ? (
           <View style={styles.simple} accessibilityLiveRegion="polite">
             <ActivityIndicator />
@@ -89,7 +89,7 @@ export function PublishProgress({
           </View>
         ) : (
           <>
-            <ThemedText type="subtitle" accessibilityRole="header">
+            <ThemedText type="heading" accessibilityRole="header">
               Publishing your trip
             </ThemedText>
             {/* One announcement per step; photo progress is exposed through the bar's value. */}
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 360,
     padding: Spacing.four,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     gap: Spacing.three,
   },
   simple: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
   statusIcon: { width: 24, alignItems: 'center', justifyContent: 'center' },
   pending: { width: 20, height: 20, borderRadius: 10, borderWidth: 2 },
   flex: { flex: 1 },
-  bar: { height: 6, borderRadius: 3, overflow: 'hidden', marginLeft: 32 },
-  barFill: { height: 6, borderRadius: 3 },
+  bar: { height: 6, borderRadius: Radius.full, overflow: 'hidden', marginLeft: 32 },
+  barFill: { height: 6, borderRadius: Radius.full },
   failure: { gap: Spacing.two, alignItems: 'stretch' },
 });

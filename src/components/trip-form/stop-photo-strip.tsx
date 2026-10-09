@@ -56,7 +56,7 @@ export function StopPhotoStrip({
               accessibilityLabel={`Photo ${i + 1} of ${photos.length} for ${label}`}
               style={[
                 styles.tile,
-                { backgroundColor: theme.surface },
+                { backgroundColor: theme.surfaceMuted },
                 isBroken && { borderWidth: 2, borderColor: theme.danger },
               ]}>
               {isBroken ? (
@@ -91,7 +91,7 @@ export function StopPhotoStrip({
         );
       })}
       {picking ? (
-        <View style={[styles.tile, styles.center, { backgroundColor: theme.surface }]}>
+        <View style={[styles.tile, styles.center, { backgroundColor: theme.surfaceMuted }]}>
           <ActivityIndicator />
         </View>
       ) : remaining > 0 ? (

@@ -40,7 +40,7 @@ export function VisibilityPicker({ value, disabled, onChange }: VisibilityPicker
                 styles.row,
                 {
                   borderColor: selected ? theme.primary : 'transparent',
-                  backgroundColor: selected ? theme.primarySoft : theme.surface,
+                  backgroundColor: selected ? theme.primarySoft : theme.surfaceMuted,
                 },
               ]}>
               <View style={styles.text}>
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
     minHeight: 56,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
-    borderRadius: Radius.md,
+    borderRadius: Radius.lg,
     borderWidth: 2,
   },
   text: { flex: 1, gap: Spacing.half },

@@ -8,13 +8,13 @@ import { VisibilityPicker } from './visibility-picker';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Icon } from '@/components/ui/icon';
 import { TextField } from '@/components/ui/text-field';
-import { Layout, Radius, Spacing } from '@/constants/theme';
+import { Layout, Spacing } from '@/constants/theme';
 import type { FormScroll } from '@/hooks/use-form-scroll';
 import type { PhotoNotice, TripFormActions } from '@/hooks/use-trip-form';
-import { useTheme } from '@/hooks/use-theme';
 import {
   MAX_STOPS,
   TEXT_MAX,
@@ -59,7 +59,6 @@ export function TripForm({
   submit,
   onSaveDraft,
 }: TripFormProps) {
-  const theme = useTheme();
   const descriptionRef = useRef<TextInput | null>(null);
   const atLimit = form.stops.length >= MAX_STOPS;
   const cover = form.cover;
@@ -82,56 +81,61 @@ export function TripForm({
         />
       ) : null}
 
-      <CoverPicker
-        imageUri={coverUri}
-        hasCover={!!cover}
-        picking={picking === 'cover'}
-        disabled={disabled}
-        onPick={actions.pickCover}
-        onRemove={actions.removeCover}
-      />
+      <Card style={styles.card}>
+        <View style={styles.cardBody}>
+          <CoverPicker
+            imageUri={coverUri}
+            hasCover={!!cover}
+            picking={picking === 'cover'}
+            disabled={disabled}
+            onPick={actions.pickCover}
+            onRemove={actions.removeCover}
+          />
+          <TextField
+            variant="onCard"
+            ref={(node) => actions.registerInput('title', node)}
+            label="Trip title"
+            value={form.title}
+            onChangeText={actions.setTitle}
+            error={errors?.title ?? null}
+            editable={!disabled}
+            maxLength={TITLE_MAX}
+            showCounter
+            autoCapitalize="sentences"
+            returnKeyType="next"
+            onSubmitEditing={() => descriptionRef.current?.focus()}
+          />
+          <TextField
+            variant="onCard"
+            ref={(node) => {
+              descriptionRef.current = node;
+              actions.registerInput('description', node);
+            }}
+            label="Description (optional)"
+            value={form.description}
+            onChangeText={actions.setDescription}
+            helperText="What is this trip about?"
+            editable={!disabled}
+            multiline
+            maxLength={TEXT_MAX}
+            showCounter
+            autoCapitalize="sentences"
+          />
+        </View>
+      </Card>
 
-      <View style={styles.section}>
-        <TextField
-          ref={(node) => actions.registerInput('title', node)}
-          label="Trip title"
-          value={form.title}
-          onChangeText={actions.setTitle}
-          error={errors?.title ?? null}
-          editable={!disabled}
-          maxLength={TITLE_MAX}
-          showCounter
-          autoCapitalize="sentences"
-          returnKeyType="next"
-          onSubmitEditing={() => descriptionRef.current?.focus()}
-        />
-        <TextField
-          ref={(node) => {
-            descriptionRef.current = node;
-            actions.registerInput('description', node);
-          }}
-          label="Description (optional)"
-          value={form.description}
-          onChangeText={actions.setDescription}
-          helperText="What is this trip about?"
-          editable={!disabled}
-          multiline
-          maxLength={TEXT_MAX}
-          showCounter
-          autoCapitalize="sentences"
-        />
-      </View>
-
-      <View style={styles.settings}>
-        <VisibilityPicker value={form.visibility} disabled={disabled} onChange={actions.setVisibility} />
-        <TravelModePicker value={form.travelMode} disabled={disabled} onChange={actions.setTravelMode} />
-      </View>
+      <Card style={styles.card}>
+        <View style={styles.cardBody}>
+          <VisibilityPicker value={form.visibility} disabled={disabled} onChange={actions.setVisibility} />
+          <TravelModePicker value={form.travelMode} disabled={disabled} onChange={actions.setTravelMode} />
+        </View>
+      </Card>
 
       <View
         style={styles.section}
         onLayout={(e) => scroll.onStopsSectionLayout(e.nativeEvent.layout.y)}>
         <View style={styles.stopsHeader}>
-          <ThemedText type="subtitle" accessibilityRole="header">
+          <ThemedText type="heading" accessibilityRole="header">
             Stops
           </ThemedText>
           <ThemedText type="caption" themeColor="textMuted">
@@ -140,15 +144,16 @@ export function TripForm({
         </View>
 
         {form.stops.length === 0 ? (
-          <View
-            style={[styles.emptyStops, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Icon name="map" size={Layout.iconSize.xl} color="textMuted" />
-            <ThemedText type="subheading">No stops yet</ThemedText>
-            <ThemedText themeColor="textMuted" style={styles.center}>
-              Add the places you will visit, in order.
-            </ThemedText>
-            <Button title="Add the first stop" disabled={disabled} onPress={actions.addStop} />
-          </View>
+          <Card>
+            <View style={styles.emptyStops}>
+              <Icon name="map" size={Layout.iconSize.xl} color="textMuted" />
+              <ThemedText type="subheading">No stops yet</ThemedText>
+              <ThemedText themeColor="textMuted" style={styles.center}>
+                Add the places you will visit, in order.
+              </ThemedText>
+              <Button title="Add the first stop" disabled={disabled} onPress={actions.addStop} />
+            </View>
+          </Card>
         ) : (
           <View
             style={styles.cards}
@@ -230,16 +235,11 @@ export function TripForm({
 const styles = StyleSheet.create({
   root: { gap: Spacing.four },
   section: { gap: Spacing.three },
-  settings: { gap: Spacing.three },
+  card: { width: '100%' },
+  cardBody: { gap: Spacing.three },
   stopsHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   cards: { gap: Spacing.three },
-  emptyStops: {
-    alignItems: 'center',
-    gap: Spacing.two,
-    padding: Spacing.four,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-  },
+  emptyStops: { alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.three },
   center: { textAlign: 'center' },
   flex: { flex: 1 },
   inlineError: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },

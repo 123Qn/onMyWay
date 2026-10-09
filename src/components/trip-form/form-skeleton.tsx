@@ -8,7 +8,7 @@ export function FormSkeleton({ variant }: { variant: 'create' | 'edit' }) {
   return (
     <SkeletonGroup style={styles.root}>
       <View style={styles.cover}>
-        <Skeleton height={200} radius={Radius.lg} />
+        <Skeleton height={200} radius={Radius.xl} />
       </View>
       <Skeleton height={72} radius={Radius.md} />
       <Skeleton height={variant === 'edit' ? 120 : 72} radius={Radius.md} />

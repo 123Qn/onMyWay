@@ -13,6 +13,8 @@ import {
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Icon } from '@/components/ui/icon';
 import { HeaderTextButton } from '@/components/ui/header-text-button';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Screen } from '@/components/ui/screen';
@@ -253,7 +255,7 @@ export default function EditProfileScreen() {
         options={{
           gestureEnabled: !dirty,
           headerLeft: () => (
-            <HeaderTextButton label="Cancel" disabled={saving} onPress={() => router.back()} />
+            <HeaderTextButton label="Cancel" tone="neutral" disabled={saving} onPress={() => router.back()} />
           ),
           headerRight: () => (
             <HeaderTextButton
@@ -284,6 +286,18 @@ export default function EditProfileScreen() {
               accessibilityLabel="Change profile photo"
               onPress={pickPhoto}
             />
+            {/* Visual affordance only; the avatar itself is the button. */}
+            <View
+              collapsable={false}
+              pointerEvents="none"
+              accessible={false}
+              importantForAccessibility="no-hide-descendants"
+              style={[
+                styles.cameraBadge,
+                { backgroundColor: theme.primary, borderColor: theme.background },
+              ]}>
+              <Icon name="camera" size={18} color="onPrimary" />
+            </View>
             {saving && avatar.kind === 'picked' ? (
               <View style={[styles.avatarOverlay, { backgroundColor: theme.overlay }]}>
                 <ActivityIndicator color={theme.onImage} />
@@ -313,63 +327,70 @@ export default function EditProfileScreen() {
           ) : null}
         </View>
 
-        <TextField
-          ref={nameRef}
-          label="Display name"
-          value={displayName}
-          onChangeText={(t) => {
-            setDisplayName(t);
-            setBanner(null);
-          }}
-          error={submitted || displayName.length > 0 ? nameError : null}
-          editable={!saving}
-          maxLength={MAX_DISPLAY_NAME_LENGTH}
-          showCounter
-          autoCapitalize="words"
-          autoComplete="name"
-          textContentType="name"
-          returnKeyType="next"
-          onSubmitEditing={() => usernameRef.current?.focus()}
-        />
-        <TextField
-          ref={usernameRef}
-          label="Username"
-          value={username}
-          onChangeText={(t) => {
-            setUsername(normalizeUsernameInput(t));
-            setBanner(null);
-          }}
-          error={availability.error}
-          helperText={availability.helperText}
-          helperTone={availability.status === 'available' ? 'success' : 'muted'}
-          helperLoading={availability.status === 'checking'}
-          editable={!saving}
-          maxLength={USERNAME_MAX}
-          showCounter
-          autoCapitalize="none"
-          autoCorrect={false}
-          spellCheck={false}
-          autoComplete="username-new"
-          textContentType="username"
-          keyboardType="ascii-capable"
-          returnKeyType="next"
-          onSubmitEditing={() => bioRef.current?.focus()}
-        />
-        <TextField
-          ref={bioRef}
-          label="Bio"
-          value={bio}
-          onChangeText={(t) => {
-            setBio(t);
-            setBanner(null);
-          }}
-          helperText="Tell travellers a bit about yourself."
-          editable={!saving}
-          multiline
-          maxLength={BIO_MAX}
-          showCounter
-          autoCapitalize="sentences"
-        />
+        <Card style={styles.fieldsCard}>
+          <View style={styles.fields}>
+            <TextField
+              variant="onCard"
+              ref={nameRef}
+              label="Display name"
+              value={displayName}
+              onChangeText={(t) => {
+                setDisplayName(t);
+                setBanner(null);
+              }}
+              error={submitted || displayName.length > 0 ? nameError : null}
+              editable={!saving}
+              maxLength={MAX_DISPLAY_NAME_LENGTH}
+              showCounter
+              autoCapitalize="words"
+              autoComplete="name"
+              textContentType="name"
+              returnKeyType="next"
+              onSubmitEditing={() => usernameRef.current?.focus()}
+            />
+            <TextField
+              variant="onCard"
+              ref={usernameRef}
+              label="Username"
+              value={username}
+              onChangeText={(t) => {
+                setUsername(normalizeUsernameInput(t));
+                setBanner(null);
+              }}
+              error={availability.error}
+              helperText={availability.helperText}
+              helperTone={availability.status === 'available' ? 'success' : 'muted'}
+              helperLoading={availability.status === 'checking'}
+              editable={!saving}
+              maxLength={USERNAME_MAX}
+              showCounter
+              autoCapitalize="none"
+              autoCorrect={false}
+              spellCheck={false}
+              autoComplete="username-new"
+              textContentType="username"
+              keyboardType="ascii-capable"
+              returnKeyType="next"
+              onSubmitEditing={() => bioRef.current?.focus()}
+            />
+            <TextField
+              variant="onCard"
+              ref={bioRef}
+              label="Bio"
+              value={bio}
+              onChangeText={(t) => {
+                setBio(t);
+                setBanner(null);
+              }}
+              helperText="Tell travellers a bit about yourself."
+              editable={!saving}
+              multiline
+              maxLength={BIO_MAX}
+              showCounter
+              autoCapitalize="sentences"
+            />
+          </View>
+        </Card>
       </Screen>
     </>
   );
@@ -384,4 +405,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   note: { textAlign: 'center' },
+  cameraBadge: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: 36,
+    height: 36,
+    borderRadius: Radius.full,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fieldsCard: { marginTop: Spacing.two },
+  fields: { gap: Spacing.three },
 });
