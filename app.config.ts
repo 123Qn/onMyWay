@@ -29,13 +29,11 @@ const config: ExpoConfig = {
   userInterfaceStyle: 'automatic',
   ios: {
     bundleIdentifier: 'com.quanh.onmyway',
-    icon: './assets/expo.icon',
   },
   android: {
     adaptiveIcon: {
-      backgroundColor: '#E6F4FE',
+      backgroundColor: '#FAF7F2',
       foregroundImage: './assets/images/android-icon-foreground.png',
-      backgroundImage: './assets/images/android-icon-background.png',
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
@@ -60,9 +58,13 @@ const config: ExpoConfig = {
     [
       'expo-splash-screen',
       {
-        backgroundColor: '#208AEF',
+        backgroundColor: '#FAF7F2',
         image: './assets/images/splash-icon.png',
-        imageWidth: 76,
+        imageWidth: 200,
+        dark: {
+          backgroundColor: '#14110F',
+          image: './assets/images/splash-icon.png',
+        },
       },
     ],
     ['expo-secure-store', { faceIDPermission: false }],

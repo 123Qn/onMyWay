@@ -21,11 +21,9 @@ SplashScreen.preventAutoHideAsync();
 function RootStack({ fontsReady }: { fontsReady: boolean }) {
   const { session, profile, isLoading, profileError } = useSession();
 
-  useEffect(() => {
-    if (!isLoading && fontsReady) SplashScreen.hideAsync();
-  }, [isLoading, fontsReady]);
-
-  // The splash stays visible until the session and the fonts are both settled.
+  // The native splash stays up until the session and the fonts are both settled. Only then is
+  // AnimatedSplashOverlay mounted, and it is the single owner of SplashScreen.hideAsync()
+  // (native splash -> same-colour overlay -> fade).
   if (isLoading || !fontsReady) return null;
 
   if (session && profileError) {

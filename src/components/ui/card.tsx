@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Radius, Spacing, shadow, type ShadowLevel } from '@/constants/theme';
+import { useHighContrast } from '@/hooks/use-high-contrast';
 import { useIsDark } from '@/hooks/use-is-dark';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -34,20 +35,25 @@ export function Card({
 }: CardProps) {
   const theme = useTheme();
   const isDark = useIsDark();
+  const highContrast = useHighContrast();
   const r = Radius[radius];
   const elevated = variant === 'elevated';
 
   const outer: ViewStyle[] = [
     { borderRadius: r, backgroundColor: elevated ? theme.surface : theme.surfaceMuted },
     ...(elevated ? [shadow(theme, elevation)] : []),
-    ...(elevated && isDark ? [{ borderWidth: 1, borderColor: theme.border }] : []),
+    ...(highContrast
+      ? [{ borderWidth: 1, borderColor: theme.borderStrong }]
+      : elevated && isDark
+        ? [{ borderWidth: 1, borderColor: theme.border }]
+        : []),
   ];
 
   const inner = <View style={[styles.clip, { borderRadius: r, padding }]}>{children}</View>;
 
   if (!onPress) {
     return (
-      <View testID={testID} style={[outer, style]}>
+      <View collapsable={false} testID={testID} style={[outer, style]}>
         {inner}
       </View>
     );

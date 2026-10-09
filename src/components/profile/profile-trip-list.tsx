@@ -1,4 +1,5 @@
-import { useState, type ReactElement, type ReactNode } from "react";
+import { useRef, useState, type ReactElement, type ReactNode } from "react";
+import { useScrollToTop } from "expo-router";
 import {
   ActivityIndicator,
   FlatList,
@@ -44,6 +45,9 @@ export function ProfileTripList({
   onRefresh,
 }: Props) {
   const theme = useTheme();
+  // Re-tapping the active Profile tab scrolls back to the top.
+  const listRef = useRef<FlatList>(null);
+  useScrollToTop(listRef);
   const window = useWindowDimensions();
   const [listWidth, setListWidth] = useState(window.width);
   // Fixed tile width so a lone last tile keeps the size of the others.
@@ -94,6 +98,7 @@ export function ProfileTripList({
 
   return (
     <FlatList
+      ref={listRef}
       data={trips.items}
       keyExtractor={(item) => item.id}
       onLayout={(e) => setListWidth(e.nativeEvent.layout.width)}

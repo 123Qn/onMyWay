@@ -17,6 +17,7 @@ import {
   shadow,
   Spacing,
 } from "@/constants/theme";
+import { useHighContrast } from "@/hooks/use-high-contrast";
 import { useTheme } from "@/hooks/use-theme";
 import {
   formatDateLong,
@@ -174,6 +175,10 @@ function FeedCard({
   const { fontScale, height: windowHeight } = useWindowDimensions();
   const [pressed, setPressed] = useState(false);
   const stacked = fontScale >= STACKED_FONT_SCALE;
+  const highContrast = useHighContrast();
+  const contrastBorder = highContrast
+    ? { borderWidth: 1, borderColor: theme.borderStrong }
+    : null;
 
   const mainButton = (
     <Pressable collapsable={false}
@@ -196,10 +201,12 @@ function FeedCard({
   if (stacked) {
     return (
       <View
+        collapsable={false}
         style={[
           styles.shadowWrap,
           shadow(theme, "md"),
           { backgroundColor: theme.surface },
+          contrastBorder,
           pressStyle,
         ]}
       >
@@ -234,11 +241,13 @@ function FeedCard({
 
   return (
     <View
+      collapsable={false}
       style={[
         styles.shadowWrap,
         styles.heroRatio,
         shadow(theme, "md"),
         { backgroundColor: theme.primarySoft, maxHeight: windowHeight * 0.65 },
+        contrastBorder,
         pressStyle,
       ]}
     >
@@ -403,6 +412,7 @@ export function TripCardSkeleton({
   }
   return (
     <View
+      collapsable={false}
       style={[
         styles.shadowWrap,
         styles.heroRatio,

@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useScrollToTop } from 'expo-router';
 import { useEffect, useRef, type ReactElement } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated';
@@ -30,6 +30,9 @@ export default function FeedScreen() {
   const { profile } = useSession();
   const { greeting, refresh: refreshGreeting } = useGreeting();
   const reduceMotion = useReducedMotion();
+  // Re-tapping the active Feed tab scrolls back to the top.
+  const listRef = useRef<FlatList>(null);
+  useScrollToTop(listRef);
   // Entrance animation only for the first cards of the initial load, never for pages or refreshes.
   const introDone = useRef(false);
   useEffect(() => {
@@ -88,6 +91,7 @@ export default function FeedScreen() {
   return (
     <Screen tabBarInset padded={false} keyboardAvoiding={false}>
       <FlatList
+        ref={listRef}
         data={feed.items}
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => (

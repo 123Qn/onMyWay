@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { Layout, Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 export type StripPhoto = { id: string; path: string; url: string | null };
 
@@ -21,6 +22,7 @@ export type PhotoViewerProps = {
 export function PhotoViewer({ photos, startIndex, onClose, onRetryPhoto }: PhotoViewerProps) {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
   const [page, setPage] = useState(0);
   const visible = startIndex !== null;
 
@@ -73,7 +75,7 @@ export function PhotoViewer({ photos, startIndex, onClose, onRetryPhoto }: Photo
             accessibilityRole="button"
             accessibilityLabel="Close photo viewer"
             onPress={onClose}
-            style={styles.close}>
+            style={[styles.close, { backgroundColor: theme.scrimChip }]}>
             <Icon name="close" size={Layout.iconSize.md} color="onImage" />
           </Pressable>
         </View>
@@ -84,6 +86,7 @@ export function PhotoViewer({ photos, startIndex, onClose, onRetryPhoto }: Photo
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  // Photo viewer is black in both modes on purpose (photos read best on pure black).
   viewer: { flex: 1, backgroundColor: '#000000' },
   viewerTop: {
     position: 'absolute',
@@ -101,6 +104,5 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
   },
 });
