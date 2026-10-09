@@ -5,6 +5,7 @@ import { PlusJakartaSans_700Bold } from '@expo-google-fonts/plus-jakarta-sans/70
 import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect, useMemo } from 'react';
 import { useColorScheme } from 'react-native';
@@ -96,6 +97,8 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={navigationTheme}>
+        {/* Base entry of the status-bar stack; the auth hero pushes 'light' and pops it on unmount. */}
+        <StatusBar style="auto" />
         <SessionProvider>
           <RootStack fontsReady={fontsLoaded || !!fontError} />
         </SessionProvider>

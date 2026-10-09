@@ -2,10 +2,10 @@ import { Link } from 'expo-router';
 import { useRef, useState } from 'react';
 import { StyleSheet, View, type TextInput } from 'react-native';
 
+import { AuthScreen } from '@/components/auth/auth-screen';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/ui/error-banner';
-import { Screen } from '@/components/ui/screen';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
 import { mapSignUpError } from '@/lib/auth-errors';
@@ -95,7 +95,7 @@ export default function SignUpScreen() {
 
   if (needsConfirmation) {
     return (
-      <Screen scroll padded="auth" centered>
+      <AuthScreen size="short">
         <ThemedText type="title" accessibilityRole="header">
           Check your email
         </ThemedText>
@@ -103,14 +103,14 @@ export default function SignUpScreen() {
           Check your email to confirm your account.
         </ThemedText>
         <Link href="/sign-in" asChild>
-          <Button title="Back to sign in" onPress={() => {}} fullWidth />
+          <Button title="Back to sign in" onPress={() => {}} size="lg" fullWidth />
         </Link>
-      </Screen>
+      </AuthScreen>
     );
   }
 
   return (
-    <Screen scroll padded="auth" centered>
+    <AuthScreen size="short">
       <ThemedText type="title" accessibilityRole="header">
         Create your account
       </ThemedText>
@@ -123,6 +123,7 @@ export default function SignUpScreen() {
         />
       ) : null}
       <TextField
+        variant="onCard"
         ref={emailRef}
         label="Email"
         value={email}
@@ -143,6 +144,7 @@ export default function SignUpScreen() {
         onSubmitEditing={() => passwordRef.current?.focus()}
       />
       <TextField
+        variant="onCard"
         ref={passwordRef}
         label="Password"
         value={password}
@@ -162,6 +164,7 @@ export default function SignUpScreen() {
         onSubmitEditing={() => nameRef.current?.focus()}
       />
       <TextField
+        variant="onCard"
         ref={nameRef}
         label="Display name"
         value={displayName}
@@ -180,14 +183,14 @@ export default function SignUpScreen() {
         returnKeyType="go"
         onSubmitEditing={onSubmit}
       />
-      <Button title="Create account" onPress={onSubmit} loading={submitting} fullWidth />
+      <Button title="Create account" onPress={onSubmit} loading={submitting} size="lg" fullWidth />
       <View style={styles.linkRow}>
         <ThemedText themeColor="textMuted">Already have an account?</ThemedText>
         <Link href="/sign-in" accessibilityRole="link" style={styles.link}>
           <ThemedText type="link">Sign in</ThemedText>
         </Link>
       </View>
-    </Screen>
+    </AuthScreen>
   );
 }
 

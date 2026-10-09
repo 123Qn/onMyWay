@@ -1,8 +1,11 @@
 import { useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Screen } from '@/components/ui/screen';
+import { Spacing } from '@/constants/theme';
 import { signOutUser } from '@/lib/sign-out';
 import { useSession } from '@/providers/session-provider';
 
@@ -31,15 +34,25 @@ export function ProfileLoadError() {
 
   return (
     <Screen scroll padded="auth" centered>
-      <ErrorBanner message="Could not load your profile." onRetry={onRetry} retrying={retrying} />
-      <Button
-        title="Sign out"
-        variant="ghost"
-        fullWidth
-        loading={signingOut}
-        disabled={retrying}
-        onPress={onSignOut}
-      />
+      <Card padding={Spacing.four} radius="xl" style={styles.card}>
+        <View style={styles.content}>
+          <ErrorBanner message="Could not load your profile." onRetry={onRetry} retrying={retrying} />
+          <Button
+            title="Sign out"
+            variant="ghost"
+            size="lg"
+            fullWidth
+            loading={signingOut}
+            disabled={retrying}
+            onPress={onSignOut}
+          />
+        </View>
+      </Card>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  card: { width: '100%', maxWidth: 480, alignSelf: 'center' },
+  content: { gap: Spacing.three },
+});

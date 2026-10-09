@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react';
 import { type TextInput } from 'react-native';
 
+import { AuthScreen } from '@/components/auth/auth-screen';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/ui/error-banner';
-import { Screen } from '@/components/ui/screen';
 import { TextField } from '@/components/ui/text-field';
 import { useUsernameAvailability } from '@/hooks/use-username-availability';
 import { AUTH_COPY, isNetworkError } from '@/lib/auth-errors';
@@ -92,7 +92,7 @@ export default function ChooseUsernameScreen() {
   };
 
   return (
-    <Screen scroll padded="auth" centered>
+    <AuthScreen size="short">
       <ThemedText type="title" accessibilityRole="header">
         Choose your username
       </ThemedText>
@@ -107,6 +107,7 @@ export default function ChooseUsernameScreen() {
         />
       ) : null}
       <TextField
+        variant="onCard"
         ref={inputRef}
         label="Username"
         value={value}
@@ -138,6 +139,7 @@ export default function ChooseUsernameScreen() {
         title="Save and continue"
         onPress={onSave}
         loading={saving}
+        size="lg"
         disabled={!canSave && !saving}
         fullWidth
       />
@@ -149,6 +151,6 @@ export default function ChooseUsernameScreen() {
         disabled={saving}
         fullWidth
       />
-    </Screen>
+    </AuthScreen>
   );
 }
