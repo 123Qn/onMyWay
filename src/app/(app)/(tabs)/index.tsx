@@ -4,7 +4,7 @@ import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated';
 
 import { Spinner } from '@/components/ui/spinner';
-import { FeedHeader } from '@/components/feed/feed-header';
+import { FeedHeader, FeedTopBar } from '@/components/feed/feed-header';
 import { ThemedText } from '@/components/themed-text';
 import { RepostCard } from '@/components/trip/repost-card';
 import { TripShareSheet, type ShareTarget } from '@/components/trip/share-sheet';
@@ -131,6 +131,8 @@ export default function FeedScreen() {
 
   return (
     <Screen tabBarInset padded={false} keyboardAvoiding={false}>
+      <View style={styles.flex}>
+      <FeedTopBar />
       <FlatList
         ref={listRef}
         data={feed.items}
@@ -174,6 +176,7 @@ export default function FeedScreen() {
         windowSize={7}
         maxToRenderPerBatch={4}
       />
+      </View>
       <TripShareSheet target={shareTarget} onClose={() => setShareTarget(null)} />
       <BottomSheet
         visible={!!menuRepost}
@@ -203,6 +206,7 @@ export default function FeedScreen() {
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   headerBlock: { gap: Spacing.three },
   content: {
     flexGrow: 1,

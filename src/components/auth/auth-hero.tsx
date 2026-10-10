@@ -35,11 +35,11 @@ export function AuthHero({ size = 'tall' }: AuthHeroProps) {
             accessible={false}
             style={styles.mark}
           />
-          <ThemedText type="display" themeColor="onPrimary" accessible={false}>
+          <ThemedText type="display" themeColor="onImage" accessible={false}>
             onMyWay
           </ThemedText>
         </View>
-        <ThemedText type="bodyStrong" themeColor="onPrimary" style={styles.tagline}>
+        <ThemedText type="bodyStrong" themeColor="onImage" style={styles.tagline}>
           Share the journey. Follow the way.
         </ThemedText>
       </View>

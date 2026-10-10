@@ -12,6 +12,7 @@ export default function AppLayout() {
       <Stack screenOptions={screenOptions}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="user/[username]" options={{ title: 'Profile' }} />
+        <Stack.Screen name="activity" options={{ title: 'Activity' }} />
         <Stack.Screen name="trip/[id]" options={{ title: 'Trip' }} />
         <Stack.Screen
           name="trip/new"
