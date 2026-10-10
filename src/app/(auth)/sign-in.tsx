@@ -118,6 +118,17 @@ export default function SignInScreen() {
         returnKeyType="go"
         onSubmitEditing={onSubmit}
       />
+      <View style={styles.forgotRow}>
+        <Link
+          href={{
+            pathname: '/forgot-password',
+            params: validateEmail(email) ? {} : { email: normalizeEmail(email) },
+          }}
+          accessibilityRole="link"
+          style={styles.forgot}>
+          <ThemedText type="link">Forgot password?</ThemedText>
+        </Link>
+      </View>
       <Button title="Sign in" onPress={onSubmit} loading={submitting} size="lg" fullWidth />
       <View style={styles.linkRow}>
         <ThemedText themeColor="textMuted">New here?</ThemedText>
@@ -138,5 +149,7 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   link: { paddingVertical: Spacing.three },
+  forgotRow: { alignItems: 'flex-end' },
+  forgot: { paddingVertical: Spacing.three, minHeight: 44 },
 });
 

@@ -564,3 +564,129 @@ Compatibility checklist for the coder:
 - `ThemedText` types, `themeColor` prop, `ThemedView type`, `useTheme()` return shape, `Colors` key names, `ThemeColor`, `Spacing` keys, `Radius` keys, `Typography` keys, `Layout.controlHeight`, `Screen` props, `Button`/`TextField`/`Avatar`/`IconButton`/`EmptyState`/`ErrorBanner`/`Skeleton` props: all remain valid. New props are optional.
 - Migrate, do not keep: `Typography.*.fontWeight` and every `fontWeight` literal; `BottomTabInset` (-> `useTabBarInset`); hard-coded `#FFFFFF`/`#000`; teal-specific assumptions (`primary` text on `primarySoft`, avatar initials colour); `TripCard variant="compact"` (-> `grid`); the OLD avatar Feed header (the "+" `IconButton` returns in the Instagram-style header, 5.1).
 - Behaviour that must not change: all MVP copy, hooks, validation, routing, guards, signed-URL handling, pagination, drafts, publish pipeline, Follow flow, maps, picker.
+
+---
+
+## 10. Password management
+
+Three flows: forgot password (signed out), reset via email link (deep link), change password (signed in). All use existing primitives (`AuthScreen`/`AuthHero` 3.13, `TextField variant="onCard"`, `Button`, `ErrorBanner`, `Card`, toast host). Password rule everywhere: `MIN_PASSWORD_LENGTH` (8) via `validateNewPassword` in `src/lib/auth-validation.ts`; also reject over 72 characters (bcrypt limit) with "Use 72 characters or fewer." Length only, no composition rules. Add `mapPasswordError(error)` next to `mapSignInError` in `src/lib/auth-errors.ts` (table in 10.5).
+
+### 10.1 Forgot password (signed out)
+
+- Entry: sign-in gets a "Forgot password?" `type="link"` text, right-aligned directly under the password field (inside the same field column, `paddingVertical` so the hit area is at least 44 high, `accessibilityRole="link"`). It is always rendered (no conditional insertion). Pass the typed email along as a route param `?email=` to prefill (normalised).
+- Route: `src/app/(auth)/forgot-password.tsx`, `AuthScreen` with the short hero (180). Content in order: title "Forgot password?", body `textMuted` "Enter your email and we'll send you a link to choose a new password.", `ErrorBanner` slot, email `TextField`, `Button` "Send reset link" (lg, fullWidth), link row "Back to sign in".
+- Submit: validate email, then `supabase.auth.resetPasswordForEmail(normalizeEmail(email), { redirectTo })` with `redirectTo = Linking.createURL('reset-password')` (expo-linking; yields `onmyway://reset-password` in a production build, a dev-client URL in development). Use the double-tap guard ref pattern from sign-in.
+- Result is neutral. Show the confirmation state for success AND for every error except network/5xx: this includes `over_email_send_rate_limit` and 429, because a per-user limit would otherwise reveal that an account exists. Network/5xx: `ErrorBanner` with retry ("Check your connection and try again.").
+- Confirmation state (same screen, same `AuthScreen` and same child structure; swap the text and button props instead of inserting/removing siblings, `collapsable={false}` on state-toggled Views): mail icon in a 64 px `primarySoft` circle, title "Check your email", body "If an account exists for {email}, we've sent a link to reset your password. It expires in 1 hour.", caption `textMuted` "Can't find it? Check your spam folder.", `Button` secondary "Resend link" showing "Resend in 0:42" and disabled during cooldown, link "Back to sign in". Announce the confirmation with `accessibilityLiveRegion="polite"` (Android) and `AccessibilityInfo.announceForAccessibility` (iOS).
+- Cooldown: 60 s from each send, counted with a timestamp (not a decrementing counter, so it survives background/foreground); keep the last-sent timestamp in a module-level map keyed by normalised email so leaving and reopening the screen does not reset it. The email field is read-only in the confirmation state; "Use a different email" is not needed (back link covers it).
+- Icons: use the existing `Icon` set; if no `mail` glyph exists, add one to the icon map rather than a new library.
+
+### 10.2 Reset password via email link
+
+Flow decision: PKCE (`flowType: 'pkce'` in the `createClient` auth options in `src/lib/supabase.ts`) with manual `exchangeCodeForSession(code)`. Keep `detectSessionInUrl: false`.
+
+| | PKCE (recommended) | Implicit |
+|---|---|---|
+| Link carries | one-time `?code=` (query) | access + refresh tokens in the URL fragment |
+| Security | code is useless without the verifier stored on the requesting device; tokens never appear in a URL, mail scanner, browser history or logs | long-lived refresh token sits in a URL; anyone who gets the link has a session |
+| Same device | required: the verifier is saved (by supabase-js, in our SecureStore adapter, key ending `-code-verifier`) when `resetPasswordForEmail` runs | not required |
+| Parsing | `Linking.parse(url).queryParams.code` | fragment parsing and `setSession({access_token, refresh_token})` by hand |
+| Official guidance | recommended for mobile and SPAs | legacy |
+
+Trade-off accepted: a user who requests the email on one phone and opens it on another gets "code verifier not found". Handle it with the specific copy in the table below ("Open the link on the phone where you asked for it, or request a new one."). Impact to check: with PKCE, the sign-up confirmation email (if "Confirm email" is on) also arrives as `?code=`; the same exchange helper must be reused for it, or confirmation must stay off in MVP. The coder must verify sign-up and sign-in still work after the flag change (the existing stored session format is unchanged).
+
+Route and guards:
+- Route: `src/app/reset-password.tsx` at the app root (not inside `(auth)`, `(app)` or `(onboarding)`), declared as a plain `<Stack.Screen name="reset-password" />` in `src/app/_layout.tsx` with no `Stack.Protected` wrapper, so the deep link `onmyway://reset-password?code=...` resolves while signed out, signed in, or onboarding.
+- Add a recovery flag to `SessionProvider` (`recovering`, `beginRecovery()`, `endRecovery()`), plain state, exposed by `useSession`. Guards become: auth `!session && !recovering`, onboarding `onboarding && !recovering`, app `ready && !onboarding && !recovering`. While recovering, only `reset-password` is mounted, so the session created by the exchange can never bounce the user to the feed. Also treat `onAuthStateChange` event `PASSWORD_RECOVERY` as a trigger for `beginRecovery()` (belt and braces); do nothing else inside that callback (existing deadlock rule).
+- The screen calls `beginRecovery()` BEFORE `exchangeCodeForSession`, and `endRecovery()` on success, on "Back to sign in", and on unmount if the form was never submitted successfully (in that last case also `supabase.auth.signOut()` so an abandoned recovery session does not remain as a normal login).
+- The reset form is shown only if THIS mount completed the exchange (local state `verified`). A plain `/reset-password` visit with a normal session or no code shows the invalid-link state. Without this, any signed-in session could reach a "change password without the old password" form.
+- The URL is never stored: `toInternalPath` in `pending-link.ts` already accepts only `/trip/<uuid>`, so `setPendingLink` ignores it; keep it that way. Never log or persist the code. Remove the code from the screen's params after reading it (`router.setParams({ code: undefined })`) so a re-render or Fast Refresh cannot exchange it twice; guard with a ref.
+- Error links: Supabase redirects failures as `?error=access_denied&error_code=otp_expired&error_description=...` (query with PKCE, fragment with implicit). Parse both query and fragment; show the invalid-link state if `error` or `error_code` exists, no `code` exists, or `exchangeCodeForSession` returns an error.
+
+Screen states (single `AuthScreen`, short hero 180, same child structure across states):
+1. Verifying: title "Reset password", centred `Spinner` and "Checking your link...". No input.
+2. Form: title "Choose a new password", body `textMuted` "Pick a password you haven't used here before.", New password and Confirm password fields (`secureTextEntry`, `textContentType="newPassword"`, `autoComplete="new-password"`, `returnKeyType` next/go), a show/hide toggle inside each field (trailing 44x44 `IconButton`-style Pressable, `collapsable={false}`, label "Show password" / "Hide password", state `accessibilityState={{ checked }}`; one toggle controls both fields; swap `secureTextEntry` prop only, never the view), rule line under New password: "At least 8 characters" `caption`, `textMuted`, switching to `success` colour plus a check glyph once met (colour is not the only cue), `Button` "Update password" (lg, fullWidth, loading). Confirm error: "Passwords don't match." Validate on blur / submit like sign-up.
+3. Invalid link: icon in `dangerSoft` circle, title "This link isn't valid", body per error (table 10.5), primary `Button` "Request a new link" (replaces to `/forgot-password`, which is inside `(auth)` so call `endRecovery()` and sign out any session first), link "Back to sign in".
+
+Submit: `supabase.auth.updateUser({ password })`. On success: best-effort `supabase.auth.signOut({ scope: 'others' })` (decision: the user may be recovering a compromised account, so all other devices are signed out; this device stays signed in; ignore its failure), then `endRecovery()`, then `router.replace('/')` and toast "Password updated". The profile is already loaded for that user, so the guards open `(app)` directly; if the profile still needs a username the onboarding guard handles it. Do not require signing in again.
+
+### 10.3 Change password (signed in)
+
+- Entry: Edit profile (5.5), below the fields `Card`, a second `Card` titled "Account" (`label`, `textMuted`) with one row "Change password": lock icon 20 in a 36 px `primarySoft` circle, label `bodyStrong`, chevron, whole row a `Pressable` min height 56, `accessibilityRole="button"`, `accessibilityLabel="Change password"`, `collapsable={false}`. The Card is always rendered. The row is enabled while saving is false; tapping pushes `/profile/change-password` as a normal stack card above the modal (the edit form stays mounted, so unsaved edits and the discard guard are untouched).
+- Route: `src/app/(app)/profile/change-password.tsx`, registered in `(app)/_layout.tsx` with title "Change password" (standard stack header with back). Content on `background` in a `Card` (`elevated`, padding 16, gap 16): Current password, New password, Confirm new password (same toggle and rule line as 10.2, one toggle for all three), `Button` "Update password", then a ghost `sm` link "Forgot your current password?".
+- Re-authentication (decision): re-sign-in. On submit call `supabase.auth.signInWithPassword({ email: session.user.email, password: current })`; on success call `updateUser({ password: next })`. Reasons: works without a second email round trip, proves possession of the old password, and refreshes the session so Supabase "Secure password change" (which requires a session younger than 24 h) never rejects the update. Side effect: `SIGNED_IN` fires with the same user id; the session provider only swaps the session object, the profile does not reload; verify no screen remounts. If `updateUser` still returns `reauthentication_needed` (dashboard "Secure password change" on and the sign-in was somehow stale), fall back to the nonce flow: `supabase.auth.reauthenticate()` emails a 6-digit code, show an extra "Verification code" field, then `updateUser({ password, nonce })`. Document it for the coder as a fallback, not the main path.
+- "Forgot your current password?": confirm dialog "We'll email a link to {email}. You'll stay signed in." then `resetPasswordForEmail` with the same `redirectTo` and the 10.1 neutral result, shown as toast "Check your email for a reset link."
+- Client rules: new password must differ from current ("Choose a password you're not using now."), plus length and match rules. Disable fields while submitting; double-tap guard ref.
+- Success: best-effort `signOut({ scope: 'others' })`, `router.back()`, toast "Password updated".
+
+### 10.4 Owner / Supabase dashboard setup
+
+Authentication, URL Configuration:
+- Site URL: an https page you own (landing page); never `localhost`. It is the fallback when `redirectTo` is not allowed.
+- Redirect URLs allow-list, exact entries: `onmyway://reset-password` (production and preview builds). For development add `exp+onmyway://**` (dev client scheme; glob allowed, on the dev/staging project only, not on production). Log `Linking.createURL('reset-password')` once in a dev build and confirm it matches an entry; if it is `onmyway://reset-password` in dev too, the first entry already covers it. If an entry does not match, Supabase silently falls back to Site URL and the app never opens.
+- Email Templates, "Reset Password": keep `{{ .ConfirmationURL }}` as the link (PKCE needs it); rewrite the copy: subject "Reset your onMyWay password", body "Tap the button to choose a new password. If you didn't ask for this, ignore this email; your password won't change." Set "Confirm sign up" copy similarly if used.
+- Sign In / Providers, Email: set minimum password length to 8 (match the client); keep "Secure password change" ON; enable leaked-password protection if the plan allows it.
+- Email OTP expiry: 3600 s (the "1 hour" in the copy; if changed, change the copy).
+- Rate limits: the built-in SMTP is for testing only, about 2 emails per hour for the whole project, shared by sign-up confirmation, reset and email change, plus a 60 s per-user resend interval. Reset emails will fail for real users. Before launch configure custom SMTP (Resend, Postmark, SES or similar, with SPF/DKIM on your domain) under Authentication, SMTP Settings, then raise the email rate limit. Until then test with at most 2 requests per hour.
+- Known limitation: mail-security scanners and some in-app mail browsers (for example Gmail on iOS) may pre-open the link and consume it, or block the custom scheme. Symptom: "link expired" right after clicking. Mitigation if it shows up in testing: switch the template to a `{{ .TokenHash }}` link to a small https page of yours that redirects to `onmyway://reset-password?...`, or move to universal/app links. Not needed for the first release.
+
+### 10.5 Copy and error mapping
+
+| Where | Text |
+|---|---|
+| Forgot title / body / button | "Forgot password?" / "Enter your email and we'll send you a link to choose a new password." / "Send reset link" |
+| Confirmation | title "Check your email"; "If an account exists for {email}, we've sent a link to reset your password. It expires in 1 hour." |
+| Resend | "Resend link" / "Resend in {m}:{ss}" |
+| Reset form | "Choose a new password", "New password", "Confirm password", "At least 8 characters", "Passwords don't match.", "Update password" |
+| Reset success toast | "Password updated" |
+| `otp_expired`, expired | title "This link isn't valid", body "This link has expired. Request a new one." |
+| Used / unknown code, `flow_state_not_found`, `bad_code_verifier` | "This link was already used or isn't valid. Request a new one." |
+| Verifier missing (other device) | "Open the link on the phone where you asked for it, or request a new one." |
+| No code in URL | "This link isn't valid. Request a new one." |
+| Change: wrong current (`invalid_credentials`) | field error on Current password: "Current password is incorrect." |
+| `same_password` | field error on New password: "Choose a password you're not using now." |
+| `weak_password` | field error on New password: use the server message if present, else "Choose a stronger password." |
+| `over_email_send_rate_limit`, 429 (forgot) | neutral confirmation (see 10.1); in change-password banner: "Too many attempts. Wait a minute and try again." |
+| `over_request_rate_limit`, 429 on sign-in/update | banner "Too many attempts. Wait a few minutes and try again." |
+| `reauthentication_needed` | switch to the code step; caption "We emailed you a 6-digit code to confirm it's you." |
+| `session_not_found`, 401 on update | banner "Your session expired. Sign in again." then sign out |
+| Network / 5xx | banner "Check your connection and try again." with retry |
+| Unknown | banner "Something went wrong. Please try again." |
+
+Never echo raw Supabase messages except `weak_password`. Match on `error.code` first, `error.status` second, never on message text.
+
+### 10.6 Accessibility and Fabric rules for these screens
+
+- Every control has an `accessibilityLabel`; toggles expose state; errors are announced via `accessibilityLiveRegion="polite"` on the error container (container always rendered, text swapped, `collapsable={false}`).
+- Touch targets at least 44x44 (links, toggles, rows). Layouts survive Dynamic Type 200% (buttons grow, no clipped text), light and dark, keyboard open on a small phone (`Screen scroll`).
+- Android Fabric: `collapsable={false}` on every `Pressable` and every state-toggled `View`; never `display: 'none'` (use `src/lib/collapse.ts`); no conditional insertion ahead of siblings, so the three reset states and the forgot/confirmation states keep the same sibling order and use `src/lib/collapse.ts` helpers or swapped content instead of mount/unmount at the top of the column. Password toggle changes the `secureTextEntry` prop only.
+- Hero status bar `light` as on the other auth screens; `reset-password` pushes it the same way.
+
+### 10.7 Coder checklist
+
+1. `supabase.ts`: add `flowType: 'pkce'`; confirm sign-in, sign-up, sign-out, session restore still work.
+2. `auth-validation.ts`: 72-char max and `validatePasswordMatch`; `auth-errors.ts`: `mapPasswordError` per 10.5 (match on `code`/`status`).
+3. `SessionProvider`: `recovering`, `beginRecovery`, `endRecovery`, `PASSWORD_RECOVERY` handling (state only, no Supabase calls in the callback).
+4. `_layout.tsx`: add `reset-password` screen; add `!recovering` to the three guards; verify `pending-link` still ignores the reset URL.
+5. `src/lib/password-reset.ts`: `sendResetEmail(email)` (builds `redirectTo`, neutral result mapping, cooldown map) and `parseRecoveryUrl(url)` (query + fragment, returns `{ code } | { error }`).
+6. Screens: `(auth)/forgot-password.tsx`, `reset-password.tsx`, `(app)/profile/change-password.tsx`; sign-in link; Edit profile "Account" card; `(app)/_layout.tsx` registration.
+7. Shared `PasswordField` (field plus show/hide toggle) rather than three copies.
+8. No secrets, no logging of codes, tokens or passwords; `npx tsc --noEmit` and `npx expo lint` clean.
+
+### 10.8 Tester checklist
+
+1. Forgot: invalid email blocked; known and unknown email show the identical confirmation; airplane mode shows banner and retry; cooldown counts 60 s, survives backgrounding and leaving/reopening the screen; resend works after cooldown; prefill from sign-in.
+2. Reset (real device, dev build and production-like build, iOS and Android): cold start from the link, warm start (app backgrounded), app already open; lands on the form, never on the feed; mismatched/short passwords blocked; show/hide works; success goes to the feed signed in with a toast; other devices are signed out; old password stops working, new works.
+3. Bad links: reuse the same link, expired link (wait or shorten OTP expiry in staging), link opened on a different phone, edited code, no code, `error_code=otp_expired`; each shows the invalid-link state and "Request a new link" works. Opening `onmyway://reset-password` with no code while signed in does not show the form.
+4. Kill the app between link open and submit: next launch is signed in as a normal session (documented behaviour) or signed out; no crash; no stuck `recovering` state.
+5. Change password: wrong current, same password, mismatch, weak, success + toast, Edit profile unsaved edits still intact after returning, "Forgot your current password?" sends the email and keeps the session, rate-limit copy (spam the button).
+6. Pending trip deep link still opens after sign-in; sign-in/sign-up unaffected by PKCE.
+7. Accessibility: TalkBack and VoiceOver labels, 44 px targets, Dynamic Type 200%, dark mode, keyboard covering fields on a small screen; Fabric: rotate, background/foreground and toggle states repeatedly on Android with no Yoga assert.
+8. Security review (agent `security`, because this touches login and user data): PKCE verifier only in SecureStore, no code/token in logs, neutral responses (compare response timing/state for known vs unknown email), redirect allow-list has no wildcard on production, guard cannot be bypassed to reach the reset form with a normal session.
+
+### 10.9 Implementation notes (account enumeration, PKCE and sign-up)
+
+- Sign-up never reveals whether an email is registered: a duplicate email (`user_already_exists` / `email_exists`) shows the same "Check your email" state as a normal sign-up awaiting confirmation ("If this email can be used, we've sent a confirmation link. Open it, then sign in."). Keep **Confirm email ON** in Supabase (Authentication, Providers, Email): with it on, Supabase itself returns an obfuscated user for existing emails, so the response is identical. With it off, a new sign-up signs in at once while a duplicate cannot, which leaks existence by behaviour.
+- Forgot password is neutral for every non-network error (10.1). Change password only runs for the signed-in user, and its "Forgot your current password?" reuses the same neutral result.
+- Sign-up confirmation with PKCE: the confirmation link is verified by Supabase (the email becomes confirmed) and then redirects to the Site URL with `?code=`. The app does not exchange it, so the user simply signs in with the password afterwards. No `emailRedirectTo` is passed, so no extra redirect entry is needed.
+- Redirect URL printed by `Linking.createURL('reset-password')`: `onmyway://reset-password` in production builds. In a development client on a LAN host expo-linking may append the host (for example `onmyway://192.168.x.x:8081/...`); dev builds log the exact value once as `[auth] reset redirectTo:`. Add that value (or `exp+onmyway://**`/the logged pattern) to the dev project only.

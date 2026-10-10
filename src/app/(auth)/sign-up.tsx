@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
-import { mapSignUpError } from '@/lib/auth-errors';
+import { classifyAuthError, mapSignUpError } from '@/lib/auth-errors';
 import {
   MAX_DISPLAY_NAME_LENGTH,
   normalizeEmail,
@@ -81,6 +81,12 @@ export default function SignUpScreen() {
   };
 
   const showError = (error: unknown) => {
+    // A duplicate email must look exactly like a successful sign-up awaiting confirmation,
+    // otherwise this form reveals which emails are registered.
+    if (classifyAuthError(error) === 'user_exists') {
+      setNeedsConfirmation(true);
+      return;
+    }
     const mapped = mapSignUpError(error);
     if (mapped.target === 'email') {
       setServerEmailError(mapped.message);
@@ -100,7 +106,7 @@ export default function SignUpScreen() {
           Check your email
         </ThemedText>
         <ThemedText themeColor="textMuted" accessibilityLiveRegion="polite">
-          Check your email to confirm your account.
+          {"If this email can be used, we've sent a confirmation link. Open it, then sign in."}
         </ThemedText>
         <Link href="/sign-in" asChild>
           <Button title="Back to sign in" onPress={() => {}} size="lg" fullWidth />

@@ -32,6 +32,7 @@ export default function AppLayout() {
           name="profile/edit"
           options={{ presentation: 'modal', title: 'Edit profile' }}
         />
+        <Stack.Screen name="profile/change-password" options={{ title: 'Change password' }} />
         <Stack.Screen
           name="pick-location"
           options={{ presentation: 'modal', title: 'Choose location' }}

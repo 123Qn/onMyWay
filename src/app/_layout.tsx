@@ -21,11 +21,11 @@ import { SessionProvider, needsUsername, useSession } from '@/providers/session-
 SplashScreen.preventAutoHideAsync();
 
 function RootStack({ fontsReady }: { fontsReady: boolean }) {
-  const { session, profile, isLoading, profileError } = useSession();
+  const { session, profile, isLoading, profileError, recovering } = useSession();
 
   const ready = !!session && !!profile;
-  const onboarding = ready && needsUsername(profile);
-  const appOpen = ready && !onboarding;
+  const onboarding = ready && needsUsername(profile) && !recovering;
+  const appOpen = ready && !onboarding && !recovering;
 
   // A deep link opened while signed out would be dropped by the guards. Remember it (validated
   // to /trip/<uuid> only) and open it once after sign-in. Each distinct URL is looked at once,
@@ -52,9 +52,11 @@ function RootStack({ fontsReady }: { fontsReady: boolean }) {
   // The native splash stays up until the session and the fonts are both settled. Only then is
   // AnimatedSplashOverlay mounted, and it is the single owner of SplashScreen.hideAsync()
   // (native splash -> same-colour overlay -> fade).
-  if (isLoading || !fontsReady) return null;
+  // While recovering, the profile fetch of the freshly exchanged session must not unmount the
+  // reset screen.
+  if ((isLoading && !recovering) || !fontsReady) return null;
 
-  if (session && profileError) {
+  if (session && profileError && !recovering) {
     return (
       <>
         <AnimatedSplashOverlay />
@@ -67,15 +69,17 @@ function RootStack({ fontsReady }: { fontsReady: boolean }) {
     <>
       <AnimatedSplashOverlay />
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Protected guard={!session}>
+        <Stack.Protected guard={!session && !recovering}>
           <Stack.Screen name="(auth)" />
         </Stack.Protected>
         <Stack.Protected guard={onboarding}>
           <Stack.Screen name="(onboarding)" />
         </Stack.Protected>
-        <Stack.Protected guard={ready && !onboarding}>
+        <Stack.Protected guard={appOpen}>
           <Stack.Screen name="(app)" />
         </Stack.Protected>
+        {/* Reachable in every state so the recovery deep link resolves; it guards itself. */}
+        <Stack.Screen name="reset-password" />
       </Stack>
     </>
   );

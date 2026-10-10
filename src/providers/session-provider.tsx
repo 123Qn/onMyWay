@@ -30,6 +30,13 @@ type SessionContextValue = {
   profileError: boolean;
   /** Refetches the profile. Resolves true on success. */
   refreshProfile: () => Promise<boolean>;
+  /**
+   * True while the password-recovery screen owns the session. The route guards close every
+   * group so the session created by the link exchange cannot bounce the user to the feed.
+   */
+  recovering: boolean;
+  beginRecovery: () => void;
+  endRecovery: () => void;
 };
 
 type ProfileResult = { userId: string; profile: Profile | null; error: boolean };
@@ -59,6 +66,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [result, setResult] = useState<ProfileResult | null>(null);
+  const [recovering, setRecovering] = useState(false);
+
+  const beginRecovery = useCallback(() => setRecovering(true), []);
+  const endRecovery = useCallback(() => setRecovering(false), []);
 
   const userId = session?.user.id ?? null;
   const userIdRef = useRef<string | null>(userId);
@@ -87,8 +98,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       });
 
     // Only update state here; calling other Supabase functions inside this callback can deadlock.
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (active) setSession(nextSession);
+    const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (!active) return;
+      if (event === 'PASSWORD_RECOVERY') setRecovering(true);
+      setSession(nextSession);
     });
 
     return () => {
@@ -125,8 +138,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const isLoading = sessionLoading || (!!userId && current === null);
 
   const value = useMemo(
-    () => ({ session, profile, isLoading, profileError, refreshProfile }),
-    [session, profile, isLoading, profileError, refreshProfile],
+    () => ({
+      session,
+      profile,
+      isLoading,
+      profileError,
+      refreshProfile,
+      recovering,
+      beginRecovery,
+      endRecovery,
+    }),
+    [session, profile, isLoading, profileError, refreshProfile, recovering, beginRecovery, endRecovery],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

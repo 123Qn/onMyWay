@@ -4,6 +4,7 @@ import { Stack, router, useNavigation } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Pressable,
   StyleSheet,
   View,
   type TextInput,
@@ -391,6 +392,29 @@ export default function EditProfileScreen() {
             />
           </View>
         </Card>
+
+        <Card style={styles.accountCard} padding={Spacing.three}>
+          <ThemedText type="small" themeColor="textMuted" style={styles.accountTitle}>
+            Account
+          </ThemedText>
+          <Pressable
+            collapsable={false}
+            accessibilityRole="button"
+            accessibilityLabel="Change password"
+            disabled={saving}
+            onPress={() => router.push('/profile/change-password')}
+            style={styles.accountRow}>
+            <View
+              collapsable={false}
+              style={[styles.accountIcon, { backgroundColor: theme.primarySoft }]}>
+              <Icon name="lock" size={20} color="primary" />
+            </View>
+            <ThemedText type="bodyStrong" style={styles.accountLabel}>
+              Change password
+            </ThemedText>
+            <Icon name="chevron-right" size={20} color="textMuted" />
+          </Pressable>
+        </Card>
       </Screen>
     </>
   );
@@ -418,4 +442,15 @@ const styles = StyleSheet.create({
   },
   fieldsCard: { marginTop: Spacing.two },
   fields: { gap: Spacing.three },
+  accountCard: { marginTop: Spacing.two },
+  accountTitle: { marginBottom: Spacing.one },
+  accountRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, minHeight: 56 },
+  accountIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  accountLabel: { flex: 1 },
 });

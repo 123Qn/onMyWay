@@ -17,6 +17,7 @@ export type IconName =
   | 'home'
   | 'person'
   | 'lock'
+  | 'mail'
   | 'image'
   | 'check'
   | 'more'
@@ -56,6 +57,7 @@ const ICONS: Record<IconName, Required<SymbolName>> = {
   home: { ios: 'house', android: 'home', web: 'home' },
   person: { ios: 'person', android: 'person', web: 'person' },
   lock: { ios: 'lock', android: 'lock', web: 'lock' },
+  mail: { ios: 'envelope', android: 'mail', web: 'mail' },
   image: { ios: 'photo', android: 'image', web: 'image' },
   check: { ios: 'checkmark', android: 'check', web: 'check' },
   more: { ios: 'ellipsis', android: 'more_vert', web: 'more_vert' },

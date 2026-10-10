@@ -91,6 +91,9 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    // PKCE: email links carry a one-time code that is useless without the verifier saved in
+    // SecureStore (key '<storageKey>-code-verifier') by the device that asked for the email.
+    flowType: 'pkce',
   },
 });
 

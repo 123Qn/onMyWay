@@ -32,6 +32,9 @@ export type TextFieldProps = Omit<TextInputProps, 'style' | 'value' | 'onChangeT
   /** 'onCard' uses surfaceMuted fill (inside white cards). */
   variant?: 'default' | 'onCard';
   containerStyle?: StyleProp<ViewStyle>;
+  /** Controlled show/hide state for secure fields; omit for per-field state. */
+  revealed?: boolean;
+  onRevealedChange?: (revealed: boolean) => void;
 };
 
 export const TextField = forwardRef<TextInput, TextFieldProps>(function TextField(
@@ -50,6 +53,8 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
     editable = true,
     variant = 'default',
     containerStyle,
+    revealed: revealedProp,
+    onRevealedChange,
     onFocus,
     onBlur,
     ...rest
@@ -59,7 +64,12 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
   const theme = useTheme();
   const inputRef = useRef<TextInput | null>(null);
   const [focused, setFocused] = useState(false);
-  const [revealed, setRevealed] = useState(false);
+  const [revealedState, setRevealedState] = useState(false);
+  const revealed = revealedProp ?? revealedState;
+  const toggleReveal = () => {
+    if (revealedProp === undefined) setRevealedState(!revealedState);
+    onRevealedChange?.(!revealed);
+  };
 
   const setRefs = useCallback(
     (node: TextInput | null) => {
@@ -127,7 +137,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
           <IconButton
             icon={revealed ? 'eye-off' : 'eye'}
             accessibilityLabel={revealed ? 'Hide password' : 'Show password'}
-            onPress={() => setRevealed((v) => !v)}
+            onPress={toggleReveal}
             disabled={!editable}
             style={styles.toggle}
           />
