@@ -54,3 +54,8 @@ supabase/.temp/
 
 # Claude Code worktrees
 .claude/worktrees/
+
+# Official seed tool: credentials, downloaded cover candidates, verify output
+scripts/seed-official/.env
+scripts/seed-official/covers/
+scripts/seed-official/verify-report.json

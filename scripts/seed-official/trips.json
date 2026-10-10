@@ -1,0 +1,159 @@
+{
+  "account": { "username": "onmyway", "display_name": "onMyWay" },
+  "trips": [
+    {
+      "slug": "bondi-to-coogee-coastal-walk",
+      "title": "Bondi to Coogee Coastal Walk",
+      "description": "Sydney's most loved coastal walk follows sandstone cliffs, ocean pools and a string of small beaches between Bondi and Coogee. It is well signposted and mostly paved, with some stairs and short hills.\n\nTake your time: swim at the rock pools, grab a coffee in Bronte and detour through the cliff-top cemetery for sweeping ocean views.\n\nTips: start early to beat the crowds, wear sun protection and bring water and swimmers. Spring and autumn are the most comfortable seasons, and winter is a great time for whale watching. Check the weather and surf conditions before walking low rock platforms.",
+      "travel_mode": "walking",
+      "visibility": "public",
+      "cover_query": "Bondi Icebergs pool aerial Sydney coast",
+      "stops": [
+        { "name": "Bondi Icebergs", "lat": -33.89527, "lng": 151.27441, "notes": "Start at the famous ocean pool on the south end of Bondi Beach. A classic photo spot before you head along the cliffs." },
+        { "name": "Tamarama Beach", "lat": -33.8999, "lng": 151.2699, "notes": "A small, steep beach tucked between headlands. Strong currents are common, so swim only where it is patrolled." },
+        { "name": "Bronte Beach", "lat": -33.9048, "lng": 151.2682, "notes": "Good spot for a break, with a park, picnic areas and cafes right by the sand." },
+        { "name": "Clovelly Beach", "lat": -33.9144, "lng": 151.269, "notes": "A narrow, sheltered inlet that is popular for calm-water swimming and snorkelling." },
+        { "name": "Gordons Bay", "lat": -33.9158, "lng": 151.26481, "notes": "A quiet rocky cove with a small beach and clear water. Look for the underwater snorkel trail marked for visitors.", "geocode_query": "Gordons Bay Underwater Trip Start, Clovelly" },
+        { "name": "Coogee Beach", "lat": -33.9207, "lng": 151.258, "notes": "Finish at this lively beach with cafes and a wide promenade. Public transport back to the city is nearby." }
+      ]
+    },
+    {
+      "slug": "sydney-harbour-icons-walk",
+      "title": "Sydney Harbour Icons on Foot",
+      "description": "See Sydney's best-known sights in one relaxed walk: harbour views from the Botanic Garden, the Opera House, Circular Quay, the historic Rocks and the Harbour Bridge, ending at the Barangaroo foreshore.\n\nThe route is flat, mostly paved and easy for all ages. Allow a half day if you want to stop for photos, a coffee and a wander through the Rocks.\n\nTips: go at sunrise or late afternoon for the best light, and bring a hat and water. Every season works well, although spring and autumn are the most comfortable.",
+      "travel_mode": "walking",
+      "visibility": "public",
+      "cover_query": "Sydney Opera House Harbour Bridge sunrise",
+      "stops": [
+        { "name": "Mrs Macquarie's Chair", "lat": -33.8616, "lng": 151.2225, "notes": "A sandstone bench on the point with classic views of the Opera House and Harbour Bridge together." },
+        { "name": "Sydney Opera House", "lat": -33.8568, "lng": 151.2153, "notes": "Walk the forecourt and steps to see the sails up close. Guided tours and performances are bookable on site or online." },
+        { "name": "Circular Quay", "lat": -33.8611, "lng": 151.2109, "notes": "The ferry hub of the harbour. A good place to grab a coffee or watch the boats come and go." },
+        { "name": "Dawes Point Park", "lat": -33.8558, "lng": 151.208, "notes": "A quiet park right beneath the Harbour Bridge, with old cannons and wide views over the water." },
+        { "name": "Barangaroo Reserve", "lat": -33.8588, "lng": 151.2001, "notes": "A restored headland with native plants and sandstone paths. A calm end to the walk." }
+      ]
+    },
+    {
+      "slug": "blue-mountains-day-trip",
+      "title": "Blue Mountains Day Trip: Lookouts and Waterfalls",
+      "description": "Escape Sydney for a classic day in the Blue Mountains: dramatic cliffs, eucalyptus valleys and the Three Sisters rock formation. Plan for about 90 minutes of driving each way from the city.\n\nMix short bushwalks with scenic lookouts and a stroll through Leura's cafe-lined main street. Most viewpoints are only a short walk from the car park.\n\nTips: start early, since weekends and school holidays get busy. Bring layers because it can be cooler and misty up here, and carry water. Autumn and spring offer the clearest walking weather.",
+      "travel_mode": "driving",
+      "visibility": "public",
+      "cover_query": "Three Sisters Blue Mountains Echo Point",
+      "stops": [
+        { "name": "Wentworth Falls Lookout", "lat": -33.72521, "lng": 150.36953, "notes": "A short walk leads to views over the falls and the Jamison Valley. Good first stop to stretch your legs.", "geocode_query": "Wentworth Falls Picnic Area" },
+        { "name": "Leura Village", "lat": -33.71512, "lng": 150.33009, "notes": "A charming main street with cafes, bookshops and galleries. Great for a late breakfast or lunch.", "geocode_query": "Leura Mall, Leura" },
+        { "name": "Echo Point and the Three Sisters", "lat": -33.73119, "lng": 150.31184, "notes": "The iconic lookout over the three sandstone peaks. Visit early in the day for fewer crowds.", "geocode_query": "Echo Point Lookout, Katoomba" },
+        { "name": "Scenic World Katoomba", "lat": -33.72899, "lng": 150.30055, "notes": "Ride the cable car and railway into the rainforest valley. Check the operator's current schedule before you go.", "geocode_query": "Scenic World, Katoomba" },
+        { "name": "Govetts Leap Lookout", "lat": -33.62793, "lng": 150.31152, "notes": "A broad lookout near Blackheath with views of the Grose Valley and a long waterfall drop.", "geocode_query": "Govetts Leap Lookout, Blackheath" }
+      ]
+    },
+    {
+      "slug": "royal-national-park-kiama-drive",
+      "title": "Royal National Park to Kiama: Coastal Drive",
+      "description": "Drive from the bush and beaches of Royal National Park, one of the world's oldest national parks, south along the cliffs to Kiama's famous blowhole. It makes a satisfying day out of Sydney.\n\nStop at quiet beaches and clifftop lookouts, then continue along the Grand Pacific Drive for sea views almost the whole way.\n\nTips: some park roads need an entry fee or pass, so check the NSW National Parks site before you leave. Bring swimmers, sunscreen and water. Weekdays are quieter, and swell can make the blowhole especially impressive.",
+      "travel_mode": "driving",
+      "visibility": "public",
+      "cover_query": "Royal National Park Wattamolla coast aerial",
+      "stops": [
+        { "name": "Audley Weir and Boat Shed", "lat": -34.0742, "lng": 151.0555, "notes": "A riverside picnic spot at the park's northern entrance. Boats and kayaks are often available to hire.", "geocode_query": "Audley Boatshed" },
+        { "name": "Wattamolla Beach", "lat": -34.13879, "lng": 151.11424, "notes": "A sheltered lagoon beside a small waterfall, popular for swimming on calm days." },
+        { "name": "Garie Beach", "lat": -34.16979, "lng": 151.06574, "notes": "A long, wild surf beach with dramatic headlands. Take care with currents and swim only where it is safe." },
+        { "name": "Bald Hill Lookout", "lat": -34.22419, "lng": 150.99692, "notes": "A famous headland lookout at the start of the Grand Pacific Drive, popular with hang gliders." },
+        { "name": "Kiama Blowhole", "lat": -34.67185, "lng": 150.86316, "notes": "Watch seawater burst through the rock. Cafes and the lighthouse are a short walk away." }
+      ]
+    },
+    {
+      "slug": "great-ocean-road-highlights",
+      "title": "Great Ocean Road Highlights: Torquay to the Twelve Apostles",
+      "description": "One of the world's great coastal drives, the Great Ocean Road winds between rainforest, surf beaches and towering limestone stacks. This route links the best-known stops from Torquay to the Twelve Apostles.\n\nBudget a full day at minimum, or better, two nights so you are not rushing. Roads are winding, so give yourself extra driving time.\n\nTips: leave early to see the Apostles in softer light, keep your eyes out for wild koalas, and carry layers because the weather can change quickly. Shoulder seasons offer thinner crowds, and summer is busiest.",
+      "travel_mode": "driving",
+      "visibility": "public",
+      "cover_query": "Twelve Apostles Great Ocean Road Victoria",
+      "stops": [
+        { "name": "Bells Beach", "lat": -38.37125, "lng": 144.27735, "notes": "A legendary surf break just outside Torquay. The lookout is a good place to watch the waves." },
+        { "name": "Lorne Pier", "lat": -38.54795, "lng": 143.98661, "notes": "A relaxed seaside town with cafes and a beachfront. A comfortable stop for lunch." },
+        { "name": "Kennett River Koala Walk", "lat": -38.66896, "lng": 143.86163, "notes": "Wild koalas and colourful birds are often seen in the gum trees. Keep a respectful distance and never feed wildlife.", "geocode_query": "Kennett River Holiday Park" },
+        { "name": "Cape Otway Lighthouse", "lat": -38.856, "lng": 143.512, "notes": "Australia's oldest surviving lighthouse on the mainland, set on a wind-swept headland." },
+        { "name": "Twelve Apostles", "lat": -38.66215, "lng": 143.1051, "notes": "The famous limestone stacks. The boardwalks are accessible, and sunset is especially beautiful.", "geocode_query": "Twelve Apostles Visitor Centre" },
+        { "name": "Loch Ard Gorge", "lat": -38.64639, "lng": 143.07074, "notes": "A sheltered inlet with a sandy beach and steep cliffs, a short drive from the Apostles." }
+      ]
+    },
+    {
+      "slug": "melbourne-laneways-walk",
+      "title": "Melbourne Laneways: Street Art, Coffee and Arcades",
+      "description": "Melbourne's hidden laneways are the heart of its coffee, food and street-art culture. This short central walk links grand Victorian arcades, graffiti-covered lanes and the bustling Queen Victoria Market.\n\nIt is flat and easy to do at your own pace. Stop wherever a cafe or mural catches your eye, because the art changes constantly.\n\nTips: laneway cafes are best enjoyed in the morning. Bring a light jacket, because Melbourne weather is famously changeable. Check market days before you go.",
+      "travel_mode": "walking",
+      "visibility": "public",
+      "cover_query": "Hosier Lane Melbourne street art",
+      "stops": [
+        { "name": "Flinders Street Station", "lat": -37.8183, "lng": 144.9671, "notes": "The city's iconic yellow station and a favourite meeting point under the clocks." },
+        { "name": "Hosier Lane", "lat": -37.8168, "lng": 144.9693, "notes": "A cobbled lane covered in ever-changing street art. Visit early for fewer people in your photos." },
+        { "name": "Degraves Street", "lat": -37.8171, "lng": 144.9661, "notes": "A busy cafe lane with outdoor seating and a European feel." },
+        { "name": "Centre Place", "lat": -37.8157, "lng": 144.9665, "notes": "A narrow zig-zag lane packed with small coffee bars and eateries." },
+        { "name": "Royal Arcade", "lat": -37.8148, "lng": 144.9647, "notes": "One of the oldest shopping arcades in Australia, with a beautiful mosaic floor and clock." },
+        { "name": "Queen Victoria Market", "lat": -37.8076, "lng": 144.9568, "notes": "A huge open-air market with fresh produce, street food and souvenirs." }
+      ]
+    },
+    {
+      "slug": "gold-coast-to-byron-bay-drive",
+      "title": "Gold Coast to Byron Bay: Beaches and Headlands",
+      "description": "A relaxed coastal drive from the high-rises of Surfers Paradise south across the border into New South Wales and on to Australia's most easterly point. You'll find surf beaches, headland lookouts and laid-back beach towns on the way.\n\nPlan about a day for the drive and stops, or stay overnight in Byron to catch both sunset and sunrise at the lighthouse.\n\nTips: parking at Cape Byron can fill up, so aim for early morning. Pack swimmers, sunscreen and a hat. Spring and autumn are usually pleasant, and summer is hot and busy.",
+      "travel_mode": "driving",
+      "visibility": "public",
+      "cover_query": "Cape Byron Lighthouse aerial Byron Bay",
+      "stops": [
+        { "name": "Surfers Paradise", "lat": -28.00179, "lng": 153.428, "notes": "The Gold Coast's famous strip. Take a walk along the beachfront before you head south.", "geocode_query": "Cavill Avenue, Surfers Paradise" },
+        { "name": "Burleigh Heads Headland", "lat": -28.09005, "lng": 153.45738, "notes": "A national park headland with a coastal walking track and surf views.", "geocode_query": "Jebbribillum Lookout, Burleigh Heads" },
+        { "name": "Point Danger, Coolangatta", "lat": -28.16437, "lng": 153.55094, "notes": "Stand on the border of Queensland and New South Wales with a lighthouse and ocean views." },
+        { "name": "Cape Byron Lighthouse", "lat": -28.6385, "lng": 153.637, "notes": "The most easterly point of mainland Australia, with walking tracks and sweeping coastline views." },
+        { "name": "Byron Bay Town Centre", "lat": -28.6434, "lng": 153.612, "notes": "Relaxed cafes, shops and markets. A good place to end the day." }
+      ]
+    },
+    {
+      "slug": "hoi-an-ancient-town-walk",
+      "title": "Phố Cổ Hội An: Đi Bộ Qua Khu Phố Cổ",
+      "description": "Hội An là một thương cảng cổ được bảo tồn rất đẹp, với những ngôi nhà gỗ, hội quán và đèn lồng đủ màu. Tuyến đi bộ này đi qua những điểm nổi bật nhất của khu phố cổ chỉ trong vài giờ.\n\nHãy đi chậm, ghé quán cà phê nhỏ, thử món cao lầu hay bánh mì, và đừng quên dạo bên sông lúc hoàng hôn khi đèn lồng được thắp sáng.\n\nMẹo: nên đi vào sáng sớm hoặc chiều muộn để tránh nắng và đông người. Mang theo nước và mũ. Mùa khô từ khoảng tháng 2 đến tháng 5 thường dễ chịu nhất. Một số điểm tham quan có vé chung, hãy kiểm tra thông tin tại chỗ.\n\nTip in English: arrive early or late in the day to avoid heat and crowds.",
+      "travel_mode": "walking",
+      "visibility": "public",
+      "cover_query": "Hoi An ancient town lanterns evening",
+      "stops": [
+        { "name": "Chùa Cầu (Cầu Nhật Bản)", "lat": 15.87715, "lng": 108.326, "notes": "Biểu tượng của Hội An, cây cầu có mái che nối hai bên khu phố cổ. Đây là điểm bắt đầu rất thuận tiện.", "geocode_query": "Chua Cau Hoi An" },
+        { "name": "Hội quán Quảng Đông / Quan Công", "lat": 15.87732, "lng": 108.32656, "notes": "Ngôi miếu nhỏ thờ Quan Công trên đường Trần Phú, nổi tiếng với kiến trúc cổ kính.", "geocode_query": "Quang Trieu Assembly Hall Hoi An" },
+        { "name": "Nhà cổ Tấn Ký", "lat": 15.87646, "lng": 108.32783, "notes": "Ngôi nhà cổ được gìn giữ kỹ lưỡng, thể hiện sự kết hợp giữa kiến trúc Việt, Nhật và Hoa.", "geocode_query": "National Heritage House of Tan Ky Hoi An" },
+        { "name": "Hội quán Phúc Kiến", "lat": 15.8769, "lng": 108.3294, "notes": "Hội quán nhiều màu sắc với sân vườn và đồ thờ chạm khắc tinh xảo." },
+        { "name": "Chợ Hội An", "lat": 15.8774, "lng": 108.3307, "notes": "Nơi lý tưởng để thử ẩm thực địa phương và mua đồ thủ công. Hãy mặc cả nhẹ nhàng và lịch sự." }
+      ]
+    },
+    {
+      "slug": "hai-van-pass-da-nang-loop",
+      "title": "Đèo Hải Vân: Đà Nẵng – Lăng Cô – Ngũ Hành Sơn – Hội An",
+      "description": "Một hành trình lái xe ngắm cảnh nổi tiếng ở miền Trung Việt Nam: băng qua đèo Hải Vân với những khúc cua ôm sát biển, ghé vịnh Lăng Cô xanh biếc, rồi quay về Ngũ Hành Sơn và Hội An.\n\nĐèo Hải Vân nằm giữa Đà Nẵng và Huế. Phần lớn xe hiện nay đi qua hầm đường bộ, nhưng cung đường đèo cũ vẫn là lựa chọn đẹp nhất cho người thích cảnh quan.\n\nMẹo: nên đi vào sáng sớm khi trời trong. Đèo hay có sương mù và gió mạnh, hãy lái chậm và chú ý an toàn. Mùa khô từ tháng 3 đến tháng 8 thường thuận lợi nhất. Mang theo nước, áo khoác mỏng và kiểm tra thời tiết trước khi đi.\n\nTip in English: the old pass road gives the best views but can be foggy, so go early and drive carefully.",
+      "travel_mode": "driving",
+      "visibility": "public",
+      "cover_query": "Hai Van Pass Da Nang coastal road aerial",
+      "stops": [
+        { "name": "Cầu Rồng, Đà Nẵng", "lat": 16.0612, "lng": 108.2274, "notes": "Điểm xuất phát với cây cầu hình con rồng nổi tiếng bên sông Hàn." },
+        { "name": "Hải Vân Quan", "lat": 16.18775, "lng": 108.13129, "notes": "Cổng quan cổ trên đỉnh đèo, nơi ngắm toàn cảnh biển và bán đảo Sơn Trà trong những ngày trời quang.", "geocode_query": "Hai Van Gate" },
+        { "name": "Vịnh Lăng Cô", "lat": 16.22521, "lng": 108.09283, "notes": "Vịnh biển đẹp với bãi cát dài và làng chài, thích hợp để nghỉ ngơi và ăn hải sản.", "geocode_query": "Lang Co Lagoon, Hai Van Pass" },
+        { "name": "Ngũ Hành Sơn", "lat": 16.00402, "lng": 108.26277, "notes": "Cụm núi đá vôi với chùa, hang động và điểm ngắm cảnh. Mang giày đi bộ thoải mái.", "geocode_query": "Marble Mountains, Da Nang" },
+        { "name": "Chùa Cầu, Hội An", "lat": 15.8774, "lng": 108.326, "notes": "Kết thúc tại phố cổ Hội An, đi bộ ngắm đèn lồng vào buổi tối." }
+      ]
+    },
+    {
+      "slug": "hanoi-old-quarter-food-walk",
+      "title": "Hà Nội 36 Phố Phường: Đi Bộ Khám Phá Ẩm Thực",
+      "description": "Khu phố cổ Hà Nội nổi tiếng với những con phố mang tên nghề truyền thống, mùi hương của phở, bún chả và cà phê trứng. Tuyến đi bộ này bắt đầu từ Nhà thờ Lớn, đi qua hồ Hoàn Kiếm và những con phố cổ đến chợ Đồng Xuân.\n\nĐi chậm, ngồi ghế nhựa thấp bên đường và thử nhiều món nhỏ thay vì một bữa lớn. Khu vực quanh Tạ Hiện sôi động nhất vào buổi tối.\n\nMẹo: giao thông đông, hãy băng qua đường từ từ và đều bước. Mang theo tiền mặt cho quán nhỏ. Mùa thu (tháng 9 đến tháng 11) là thời điểm dễ chịu nhất để đi bộ.\n\nTip in English: cross streets slowly and steadily, and bring small cash for street stalls.",
+      "travel_mode": "walking",
+      "visibility": "public",
+      "cover_query": "Hanoi Old Quarter street food",
+      "stops": [
+        { "name": "Nhà thờ Lớn Hà Nội", "lat": 21.02865, "lng": 105.84886, "notes": "Nhà thờ kiểu Gothic xây từ thời Pháp thuộc, xung quanh có nhiều quán cà phê nhỏ.", "geocode_query": "Saint Joseph Cathedral, Hanoi" },
+        { "name": "Đền Ngọc Sơn, hồ Hoàn Kiếm", "lat": 21.03073, "lng": 105.85238, "notes": "Ngôi đền nhỏ bên hồ, nối với bờ bằng cầu Thê Húc màu đỏ. Nên đi vào sáng sớm để thấy người dân tập thể dục.", "geocode_query": "Ngoc Son Temple, Hanoi" },
+        { "name": "Phố Mã Mây", "lat": 21.0353, "lng": 105.8517, "notes": "Con phố cổ yên tĩnh với những ngôi nhà ống truyền thống, thích hợp để dạo bộ." },
+        { "name": "Ngã tư Tạ Hiện", "lat": 21.03465, "lng": 105.852, "notes": "Khu phố sôi động với quán bia hơi và đồ ăn vặt, đông nhất vào buổi tối.", "geocode_query": "Ta Hien Street, Hanoi" },
+        { "name": "Ô Quan Chưởng", "lat": 21.0376, "lng": 105.8514, "notes": "Cổng thành cổ duy nhất còn lại của Hà Nội xưa, nằm ngay trong khu phố cổ." },
+        { "name": "Chợ Đồng Xuân", "lat": 21.0386, "lng": 105.8496, "notes": "Khu chợ lớn bán đủ thứ, từ vải đến đồ ăn. Tầng trệt thường có nhiều món ăn vặt." }
+      ]
+    }
+  ]
+}
