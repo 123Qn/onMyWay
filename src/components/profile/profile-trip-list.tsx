@@ -1,7 +1,7 @@
+import { Spinner } from '@/components/ui/spinner';
 import { useCallback, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { router, useScrollToTop } from "expo-router";
 import {
-  ActivityIndicator,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -133,7 +133,7 @@ export function ProfileTripList({
       accessible
       accessibilityLabel="Loading more trips"
     >
-      <ActivityIndicator color={theme.textMuted} />
+      <Spinner color="textMuted" />
     </View>
   ) : source.loadMoreError ? (
     <View style={styles.footerRow}>

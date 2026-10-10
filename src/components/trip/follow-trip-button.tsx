@@ -4,8 +4,7 @@ import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
-import { Gradient } from '@/components/ui/gradient';
-import { Duration, Spacing, fadeToBackground } from '@/constants/theme';
+import { Duration, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
   appleDirectionsUrl,
@@ -43,7 +42,7 @@ async function openUrl(url: string, onError: () => void) {
 
 type Provider = 'google' | 'apple';
 
-/** "Follow this trip" button floating over a bottom fade, plus the maps / part pickers. */
+/** "Follow this trip" bar pinned below the scroll content, plus the maps / part pickers. */
 export function FollowTripButton({ stops, travelMode = 'driving', onOpenError, onLayout }: FollowTripButtonProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -113,8 +112,11 @@ export function FollowTripButton({ stops, travelMode = 'driving', onOpenError, o
     <Animated.View
       entering={reduceMotion ? undefined : FadeIn.duration(Duration.fast)}
       onLayout={onLayout}
-      style={[styles.area, { paddingBottom: Math.max(insets.bottom, FLOAT_MIN_BOTTOM) }]}>
-      <Gradient {...fadeToBackground(theme)} style={StyleSheet.absoluteFill} />
+      collapsable={false}
+      style={[
+        styles.area,
+        { backgroundColor: theme.background, paddingBottom: Math.max(insets.bottom, FLOAT_MIN_BOTTOM) },
+      ]}>
       <Button
         title="Follow this trip"
         icon="directions"
@@ -129,14 +131,10 @@ export function FollowTripButton({ stops, travelMode = 'driving', onOpenError, o
 }
 
 const styles = StyleSheet.create({
-  // Height = fade (24) + button + bottom inset; the screen measures it for its bottom padding.
+  // In normal flow below the ScrollView (not an overlay), so it can never cover the map card
+  // or its Google logo; the scroll viewport simply ends above it.
   area: {
-    position: 'absolute',
-    pointerEvents: 'box-none',
-    left: 0,
-    right: 0,
-    bottom: 0,
     paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.four,
+    paddingTop: Spacing.two,
   },
 });

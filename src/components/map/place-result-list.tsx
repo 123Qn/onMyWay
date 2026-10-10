@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 
+import { Spinner } from '@/components/ui/spinner';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -46,7 +47,7 @@ export function PlaceResultList({
   if (status === 'loading') {
     return (
       <View accessibilityRole="progressbar" accessibilityLabel="Searching" style={styles.status} collapsable={false}>
-        <ActivityIndicator color={theme.primary} />
+        <Spinner color="primary" />
         <ThemedText themeColor="textMuted">Searching...</ThemedText>
       </View>
     );

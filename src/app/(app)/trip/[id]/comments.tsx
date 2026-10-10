@@ -2,7 +2,6 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useHeaderHeight } from 'expo-router/react-navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   InteractionManager,
@@ -14,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+import { Spinner } from '@/components/ui/spinner';
 import { CommentComposer } from '@/components/comments/comment-composer';
 import { CommentThread, type CommentActions } from '@/components/comments/comment-item';
 import { ThemedText } from '@/components/themed-text';
@@ -187,7 +187,7 @@ function CommentsBody() {
   if (comments.loadingMore) {
     footer = (
       <View style={styles.footer} accessible accessibilityLabel="Loading more">
-        <ActivityIndicator color={theme.textMuted} />
+        <Spinner color="textMuted" />
         <ThemedText type="caption" themeColor="textMuted">
           Loading more
         </ThemedText>

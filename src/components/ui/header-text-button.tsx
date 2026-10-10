@@ -1,5 +1,6 @@
-import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 
+import { Spinner } from '@/components/ui/spinner';
 import { ThemedText } from '@/components/themed-text';
 import { FontFamily, Layout, Spacing } from '@/constants/theme';
 
@@ -26,7 +27,7 @@ export function HeaderTextButton({ label, onPress, disabled, loading, bold, tone
       hitSlop={8}
       style={styles.button}>
       {loading ? (
-        <ActivityIndicator />
+        <Spinner color={tone === 'neutral' ? 'text' : 'primary'} />
       ) : (
         <ThemedText
           themeColor={tone === 'neutral' ? 'text' : 'primary'}

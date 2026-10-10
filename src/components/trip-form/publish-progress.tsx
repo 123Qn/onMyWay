@@ -1,5 +1,6 @@
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { Spinner } from '@/components/ui/spinner';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -84,7 +85,7 @@ export function PublishProgress({
       <View style={[styles.card, { backgroundColor: theme.surface }, shadow(theme, 'lg')]}>
         {simple ? (
           <View style={styles.simple} accessibilityLiveRegion="polite">
-            <ActivityIndicator />
+            <Spinner color="primary" />
             <ThemedText type="bodyStrong">{simpleLabel}</ThemedText>
           </View>
         ) : (
@@ -112,7 +113,7 @@ export function PublishProgress({
                       accessibilityLabel={skipped ? `${s.label}. ${ROUTE_SKIPPED_DETAIL}.` : undefined}>
                       <View style={styles.statusIcon}>
                         {status === 'active' ? (
-                          <ActivityIndicator size="small" />
+                          <Spinner color="primary" />
                         ) : status === 'done' ? (
                           <Icon name="check" size={Layout.iconSize.md} color="success" />
                         ) : skipped ? (

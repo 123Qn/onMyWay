@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { Spinner } from '@/components/ui/spinner';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { Radius, Spacing } from '@/constants/theme';
@@ -92,7 +93,7 @@ export function StopPhotoStrip({
       })}
       {picking ? (
         <View style={[styles.tile, styles.center, { backgroundColor: theme.surfaceMuted }]}>
-          <ActivityIndicator />
+          <Spinner color="primary" />
         </View>
       ) : remaining > 0 ? (
         <Pressable collapsable={false}

@@ -1,5 +1,4 @@
 import {
-  ActivityIndicator,
   Pressable,
   StyleSheet,
   View,
@@ -9,6 +8,7 @@ import {
 
 import { Icon, type IconName } from './icon';
 
+import { Spinner } from './spinner';
 import { ThemedText } from '@/components/themed-text';
 import { Layout, Radius, Spacing, shadow, type ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -109,7 +109,7 @@ export function Button({
       </View>
       {loading ? (
         <View collapsable={false} style={styles.spinner}>
-          <ActivityIndicator color={theme[textColor]} />
+          <Spinner color={textColor} />
         </View>
       ) : null}
     </Pressable>

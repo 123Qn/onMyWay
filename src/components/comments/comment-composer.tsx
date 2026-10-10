@@ -1,5 +1,5 @@
-import { useState, type RefObject } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { useEffect, useState, type RefObject } from 'react';
+import { Keyboard, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -41,7 +41,20 @@ export function CommentComposer({
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [focused, setFocused] = useState(false);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
   const canSend = value.trim().length > 0 && !disabled;
+
+  // Keyboard open: the keyboard already clears the nav bar, so only a small gap (no double inset).
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardOpen(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardOpen(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+  const bottomPadding = keyboardOpen ? Spacing.two : insets.bottom + Spacing.two;
 
   return (
     <View
@@ -51,7 +64,7 @@ export function CommentComposer({
         {
           backgroundColor: theme.surface,
           borderTopColor: theme.border,
-          paddingBottom: Math.max(insets.bottom, Spacing.three - Spacing.one),
+          paddingBottom: bottomPadding,
         },
       ]}>
       <View

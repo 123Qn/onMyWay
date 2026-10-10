@@ -1,8 +1,9 @@
 import { router, useScrollToTop } from 'expo-router';
 import { useEffect, useRef, useState, type ReactElement } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated';
 
+import { Spinner } from '@/components/ui/spinner';
 import { FeedHeader } from '@/components/feed/feed-header';
 import { ThemedText } from '@/components/themed-text';
 import { RepostCard } from '@/components/trip/repost-card';
@@ -71,7 +72,7 @@ export default function FeedScreen() {
   if (feed.loadingMore) {
     footer = (
       <View style={styles.footer} accessible accessibilityLabel="Loading more trips">
-        <ActivityIndicator color={theme.textMuted} />
+        <Spinner color="textMuted" />
       </View>
     );
   } else if (feed.loadMoreError) {

@@ -3,7 +3,6 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActionSheetIOS,
-  ActivityIndicator,
   Alert,
   BackHandler,
   Platform,
@@ -39,6 +38,7 @@ import { Icon } from '@/components/ui/icon';
 import { IconButton } from '@/components/ui/icon-button';
 import { Screen } from '@/components/ui/screen';
 import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { Gradients, Layout, Radius, Spacing, coverFallbackIndex, shadow } from '@/constants/theme';
 import { useSignedUrls } from '@/hooks/use-signed-urls';
 import { useTheme } from '@/hooks/use-theme';
@@ -66,7 +66,6 @@ const ROUTE_CAPTION: Record<TravelMode, string> = {
 };
 
 const EDGES: Edge[] = ['left', 'right'];
-const DEFAULT_BAR_HEIGHT = 96;
 
 function stopCountLabel(n: number): string {
   return n === 1 ? '1 stop' : `${n} stops`;
@@ -96,7 +95,6 @@ export default function TripDetailScreen() {
   const social = useTripSocialInfo(id);
   const [shareOpen, setShareOpen] = useState(false);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
-  const [barHeight, setBarHeight] = useState(DEFAULT_BAR_HEIGHT);
   const [menuBusy, setMenuBusy] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [openError, setOpenError] = useState(false);
@@ -341,7 +339,7 @@ export default function TripDetailScreen() {
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: barHeight + Spacing.three }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: Spacing.four }]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -603,7 +601,6 @@ export default function TripDetailScreen() {
         stops={mapStops}
         travelMode={travelMode}
         onOpenError={() => setOpenError(true)}
-        onLayout={(e) => setBarHeight(e.nativeEvent.layout.height)}
       />
 
       {deleting ? (
@@ -612,7 +609,7 @@ export default function TripDetailScreen() {
           onStartShouldSetResponder={() => true}
           accessibilityViewIsModal
           accessibilityLiveRegion="polite">
-          <ActivityIndicator size="large" color={theme.onImage} />
+          <Spinner size="lg" color="onImage" />
           <ThemedText themeColor="onImage">Deleting trip...</ThemedText>
         </View>
       ) : null}

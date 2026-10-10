@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
+import { Spinner } from '@/components/ui/spinner';
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -97,7 +98,7 @@ export default function TripLikesScreen() {
   if (likes.loadingMore) {
     footer = (
       <View style={styles.footer} accessible accessibilityLabel="Loading more">
-        <ActivityIndicator color={theme.textMuted} />
+        <Spinner color="textMuted" />
       </View>
     );
   } else if (likes.loadMoreError) {

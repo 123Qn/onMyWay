@@ -1,6 +1,6 @@
 import { SymbolView } from 'expo-symbols';
 import type { ComponentProps } from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Colors, Layout, type ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -104,9 +104,66 @@ export type IconProps = {
   style?: StyleProp<ViewStyle>;
 };
 
+/**
+ * Solid heart / bookmark for Android and web. expo-symbols only ships the static Material Symbols
+ * Outlined font there (no FILL axis, no fill option), so `favorite` and `bookmark` render as outlines.
+ * Built from plain views; all values are static per size/colour.
+ */
+function SolidShape({ name, size, color, style }: { name: 'heart' | 'bookmark'; size: number; color: string; style?: StyleProp<ViewStyle> }) {
+  if (name === 'heart') {
+    // Square of side s rotated 45deg; two circles (diameter s) are its children, centred on its
+    // top and left edge midpoints, so after rotation they sit upper-right and upper-left.
+    // Bounding box: width 1.707s (~0.8 of size), from -0.854s to +0.707s around the square centre.
+    const s = (size * 0.8) / 1.707;
+    const cy = size / 2 + 0.0735 * s;
+    const lobe = { position: 'absolute', width: s, height: s, borderRadius: s / 2, backgroundColor: color } as const;
+    return (
+      <View collapsable={false} style={[{ width: size, height: size }, style]}>
+        <View
+          collapsable={false}
+          style={{
+            position: 'absolute',
+            width: s,
+            height: s,
+            left: size / 2 - s / 2,
+            top: cy - s / 2,
+            backgroundColor: color,
+            transform: [{ rotate: '45deg' }],
+          }}>
+          <View collapsable={false} style={[lobe, { top: -s / 2, left: 0 }]} />
+          <View collapsable={false} style={[lobe, { top: 0, left: -s / 2 }]} />
+        </View>
+      </View>
+    );
+  }
+  const w = Math.round(size * 0.62);
+  const tail = Math.round(size * 0.22);
+  const bodyH = Math.round(size * 0.86) - tail;
+  const left = Math.round((size - w) / 2);
+  const top = Math.round(size * 0.07);
+  const half = w / 2;
+  return (
+    <View collapsable={false} style={[{ width: size, height: size }, style]}>
+      <View collapsable={false} style={{ position: 'absolute', left, top, width: w, height: bodyH, backgroundColor: color, borderTopLeftRadius: 2, borderTopRightRadius: 2 }} />
+      <View
+        collapsable={false}
+        style={{ position: 'absolute', left, top: top + bodyH, width: 0, height: 0, borderTopWidth: tail, borderRightWidth: half, borderTopColor: color, borderRightColor: 'transparent' }}
+      />
+      <View
+        collapsable={false}
+        style={{ position: 'absolute', left: left + half, top: top + bodyH, width: 0, height: 0, borderTopWidth: tail, borderLeftWidth: half, borderTopColor: color, borderLeftColor: 'transparent' }}
+      />
+    </View>
+  );
+}
+
 export function Icon({ name, size = Layout.iconSize.lg, color = 'text', filled = false, style }: IconProps) {
   const theme = useTheme();
   const tint = color in Colors.light ? theme[color as ThemeColor] : color;
+
+  if (filled && Platform.OS !== 'ios' && (name === 'heart' || name === 'bookmark')) {
+    return <SolidShape name={name} size={size} color={tint} style={style} />;
+  }
 
   return (
     <SymbolView

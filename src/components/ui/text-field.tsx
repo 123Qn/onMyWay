@@ -1,6 +1,5 @@
 import { forwardRef, useCallback, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Platform,
   Pressable,
   StyleSheet,
@@ -14,6 +13,7 @@ import {
 import { Icon } from './icon';
 import { IconButton } from './icon-button';
 
+import { Spinner } from '@/components/ui/spinner';
 import { ThemedText } from '@/components/themed-text';
 import { FontFamily, Layout, Radius, Spacing, Typography, shadow } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -146,7 +146,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
             </View>
           ) : helperText ? (
             <View style={styles.helperRow} accessibilityLiveRegion="polite">
-              {helperLoading ? <ActivityIndicator size="small" color={theme.textMuted} /> : null}
+              {helperLoading ? <Spinner color="textMuted" /> : null}
               {helperTone === 'success' ? (
                 <Icon name="check" size={Layout.iconSize.sm} color="success" />
               ) : null}

@@ -3,13 +3,13 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { Stack, router, useNavigation } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   StyleSheet,
   View,
   type TextInput,
 } from 'react-native';
 
+import { Spinner } from '@/components/ui/spinner';
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -300,7 +300,7 @@ export default function EditProfileScreen() {
             </View>
             {saving && avatar.kind === 'picked' ? (
               <View style={[styles.avatarOverlay, { backgroundColor: theme.overlay }]}>
-                <ActivityIndicator color={theme.onImage} />
+                <Spinner color="onImage" />
               </View>
             ) : null}
           </View>

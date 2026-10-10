@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
-import { ActivityIndicator, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 
+import { Spinner } from '@/components/ui/spinner';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -69,7 +70,7 @@ export function CoverPicker({
         ) : null}
         {picking ? (
           <View style={[StyleSheet.absoluteFill, styles.spinner, { backgroundColor: theme.overlay }]}>
-            <ActivityIndicator color={theme.onImage} />
+            <Spinner color="onImage" />
           </View>
         ) : null}
       </Pressable>

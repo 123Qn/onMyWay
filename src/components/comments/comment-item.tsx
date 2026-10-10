@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
-import { ActivityIndicator, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 
+import { Spinner } from '@/components/ui/spinner';
 import { PopIcon } from '@/components/social/pop-icon';
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
@@ -218,7 +219,7 @@ export function CommentThread({
             {toggleLabel}
           </ThemedText>
           <View collapsable={false} style={loading ? undefined : styles.none}>
-            <ActivityIndicator size="small" color={theme.textMuted} />
+            <Spinner color="textMuted" />
           </View>
         </Pressable>
 

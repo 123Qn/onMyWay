@@ -1,8 +1,9 @@
-import { ActivityIndicator, Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Icon, type IconName } from './icon';
 
 import { GlassSurface } from './glass-surface';
+import { Spinner } from '@/components/ui/spinner';
 import { Layout, Radius, type ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -62,7 +63,7 @@ export function IconButton({
         <GlassSurface radius={Radius.full} style={StyleSheet.absoluteFill} />
       ) : null}
       {loading ? (
-        <ActivityIndicator color={theme[color]} />
+        <Spinner color={color} />
       ) : (
         <Icon name={icon} size={GLYPH[size]} color={color} />
       )}
