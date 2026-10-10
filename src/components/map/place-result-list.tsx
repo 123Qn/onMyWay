@@ -4,7 +4,7 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
-import { Layout, Radius, Spacing } from '@/constants/theme';
+import { FontFamily, Layout, Radius, Spacing } from '@/constants/theme';
 import type { PlaceSearchStatus } from '@/hooks/use-place-search';
 import { useTheme } from '@/hooks/use-theme';
 import type { PlaceResult } from '@/lib/nominatim';
@@ -45,7 +45,7 @@ export function PlaceResultList({
   const theme = useTheme();
   if (status === 'loading') {
     return (
-      <View accessibilityRole="progressbar" accessibilityLabel="Searching" style={styles.status}>
+      <View accessibilityRole="progressbar" accessibilityLabel="Searching" style={styles.status} collapsable={false}>
         <ActivityIndicator color={theme.primary} />
         <ThemedText themeColor="textMuted">Searching...</ThemedText>
       </View>
@@ -54,9 +54,9 @@ export function PlaceResultList({
 
   if (status === 'empty') {
     return (
-      <View accessibilityLiveRegion="polite" style={styles.status}>
+      <View accessibilityLiveRegion="polite" style={styles.status} collapsable={false}>
         <Icon name="search" size={Layout.iconSize.lg} color="textMuted" />
-        <View style={styles.statusText}>
+        <View collapsable={false} style={styles.statusText}>
           <ThemedText type="bodyStrong">No places found</ThemedText>
           <ThemedText type="caption" themeColor="textMuted">
             Try a different name, or move the map to place the pin yourself.
@@ -69,9 +69,9 @@ export function PlaceResultList({
   if (status === 'error' || status === 'rate_limited') {
     const busy = status === 'rate_limited';
     return (
-      <View accessibilityLiveRegion="polite" style={styles.status}>
+      <View accessibilityLiveRegion="polite" style={styles.status} collapsable={false}>
         <Icon name="alert" size={Layout.iconSize.lg} color="danger" />
-        <View style={styles.statusText}>
+        <View collapsable={false} style={styles.statusText}>
           <ThemedText>
             {busy
               ? 'Search is busy right now. Wait a moment and try again.'
@@ -91,7 +91,7 @@ export function PlaceResultList({
       renderItem={({ item, index }) => {
         const selected = selectedKey === placeKey(item);
         return (
-          <Pressable
+          <Pressable collapsable={false}
             accessibilityRole="button"
             accessibilityLabel={`${item.name}, ${item.address}`}
             accessibilityHint="Moves the pin to this place"
@@ -109,7 +109,7 @@ export function PlaceResultList({
               pressed && { backgroundColor: theme.backgroundSelected },
             ]}>
             <Icon name="pin" size={Layout.iconSize.md} color="textMuted" />
-            <View style={styles.rowText}>
+            <View collapsable={false} style={styles.rowText}>
               <ThemedText type="small" numberOfLines={1} style={styles.name}>
                 {item.name}
               </ThemedText>
@@ -142,5 +142,5 @@ const styles = StyleSheet.create({
     minHeight: 56,
   },
   rowText: { flex: 1 },
-  name: { fontWeight: '600' },
+  name: { fontFamily: FontFamily.semibold },
 });

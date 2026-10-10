@@ -23,6 +23,7 @@ import {
   type PathPatch,
   type PhotoValue,
   type StopValue,
+  type TravelMode,
   type TripFormValues,
   type Visibility,
 } from '@/lib/trip-form';
@@ -34,6 +35,7 @@ type Action =
   | { type: 'title'; value: string }
   | { type: 'description'; value: string }
   | { type: 'visibility'; value: Visibility }
+  | { type: 'travelMode'; value: TravelMode }
   | { type: 'cover'; cover: CoverValue | null }
   | { type: 'addStop'; stop: StopValue }
   | { type: 'updateStop'; id: string; patch: Partial<Pick<StopValue, 'name' | 'notes'>> }
@@ -55,6 +57,8 @@ function reducer(form: TripFormValues, action: Action): TripFormValues {
       return { ...form, description: action.value };
     case 'visibility':
       return { ...form, visibility: action.value };
+    case 'travelMode':
+      return { ...form, travelMode: action.value };
     case 'cover':
       return { ...form, cover: action.cover };
     case 'addStop':
@@ -132,6 +136,7 @@ export type TripFormActions = {
   setTitle: (value: string) => void;
   setDescription: (value: string) => void;
   setVisibility: (value: Visibility) => void;
+  setTravelMode: (value: TravelMode) => void;
   updateStop: (id: string, patch: Partial<Pick<StopValue, 'name' | 'notes'>>) => void;
   addStop: () => void;
   changeLocation: (id: string) => void;
@@ -281,6 +286,7 @@ export function useTripForm({
       setTitle: (value) => dispatch({ type: 'title', value }),
       setDescription: (value) => dispatch({ type: 'description', value }),
       setVisibility: (value) => dispatch({ type: 'visibility', value }),
+      setTravelMode: (value) => dispatch({ type: 'travelMode', value }),
       updateStop: (id, patch) => dispatch({ type: 'updateStop', id, patch }),
       addStop: () => {
         if (formRef.current.stops.length >= MAX_STOPS) return;

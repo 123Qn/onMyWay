@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
-import { BottomTabInset, Layout, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Layout, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useTabBarInset } from '@/hooks/use-tab-bar-inset';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ScreenProps = {
@@ -48,12 +49,13 @@ export function Screen({
   testID,
 }: ScreenProps) {
   const theme = useTheme();
+  const tabInset = useTabBarInset();
   const safeEdges = tabBarInset ? edges.filter((e) => e !== 'bottom') : edges;
 
   const padding = padded === 'auth' ? Spacing.four : padded ? Layout.screenPadding : 0;
   const contentStyle: ViewStyle = {
     padding,
-    paddingBottom: padding + (tabBarInset ? BottomTabInset : 0),
+    paddingBottom: padding + (tabBarInset ? tabInset : 0),
     gap: Spacing.three,
     width: '100%',
     maxWidth,

@@ -19,7 +19,7 @@ import { randomUuid } from '@/lib/random-id';
 import { clearDraft, type TripDraft } from '@/lib/trip-drafts';
 import { TRIP_ERROR_COPY, isRetryable, tripErrorMessage } from '@/lib/trip-errors';
 import { emitTripEvent } from '@/lib/trip-events';
-import { emptyForm, isEmptyForm, pendingUploads } from '@/lib/trip-form';
+import { emptyForm, hasRoutableStops, isEmptyForm, pendingUploads } from '@/lib/trip-form';
 import {
   discardPublishedTrip,
   publishTrip,
@@ -46,6 +46,7 @@ export default function NewTripScreen() {
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [photoProgress, setPhotoProgress] = useState<{ done: number; total: number } | null>(null);
+  const [routing, setRouting] = useState(false);
   const [failure, setFailure] = useState<PublishFailure | null>(null);
   const [banner, setBanner] = useState<Banner | null>(null);
   const publishingRef = useRef(false);
@@ -210,6 +211,7 @@ export default function NewTripScreen() {
     setBanner(null);
     setFailure(null);
     setProgress({ step: 'trip', done: 0, total: 0 });
+    setRouting(hasRoutableStops(formRef.current.stops));
     setOverlay('publish');
 
     let id = tripIdRef.current;
@@ -299,7 +301,7 @@ export default function NewTripScreen() {
       options={{
         gestureEnabled: false,
         headerLeft: () => (
-          <HeaderTextButton label="Cancel" disabled={busy} onPress={() => router.back()} />
+          <HeaderTextButton label="Cancel" tone="neutral" disabled={busy} onPress={() => router.back()} />
         ),
         headerRight: () => (
           <HeaderTextButton
@@ -361,6 +363,7 @@ export default function NewTripScreen() {
           variant="publish"
           progress={progress}
           photos={photoProgress}
+          routing={routing}
           failure={failure}
           onRetry={() => void runPublish()}
           onBack={() => {

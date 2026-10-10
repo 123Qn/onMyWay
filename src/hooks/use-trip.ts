@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { supabase } from '@/lib/supabase';
+import type { TravelMode } from '@/lib/trip-form';
+import { asTravelMode, fetchTripRoute, type TripRoute } from '@/lib/trip-route';
 import { emitTripEvent, subscribeTripEvents } from '@/lib/trip-events';
 import { listAll } from '@/lib/trip-storage';
 import { useSession } from '@/providers/session-provider';
@@ -28,6 +30,9 @@ export type TripDetail = {
   description: string | null;
   coverPath: string | null;
   visibility: 'public' | 'private';
+  travelMode: TravelMode;
+  /** Stored road route; null when it could not be read (treated like "no route"). */
+  route: TripRoute | null;
   createdAt: string;
   author: { username: string; displayName: string; avatarPath: string | null };
   stops: TripStop[];
@@ -43,6 +48,8 @@ export type TripState = {
   refreshing: boolean;
   refresh: () => Promise<void>;
   retry: () => void;
+  /** Re-reads only the stored route (after "Try again"). */
+  refreshRoute: () => Promise<void>;
   /** Resolves true on success. */
   setVisibility: (next: 'public' | 'private') => Promise<boolean>;
   /** Removes Storage files, then the trip row. Resolves true on success. */
@@ -51,12 +58,14 @@ export type TripState = {
 
 // One literal (no concatenation) so supabase-js can infer the embedded row types.
 const SELECT =
-  'id, owner_id, title, description, cover_path, visibility, created_at, profiles:owner_id(username, display_name, avatar_path), stops(id, position, name, lat, lng, address, notes, stop_photos(id, position, storage_path))' as const;
+  'id, owner_id, title, description, cover_path, visibility, travel_mode, created_at, profiles:owner_id(username, display_name, avatar_path), stops(id, position, name, lat, lng, address, notes, stop_photos(id, position, storage_path))' as const;
 
 type Loaded = { kind: 'ok'; trip: TripDetail } | { kind: 'missing' } | { kind: 'error' };
 
 async function fetchTrip(id: string): Promise<Loaded> {
   try {
+    // Started together with the trip query (one RPC per load); its failure never fails the load.
+    const routePromise = fetchTripRoute(id);
     const { data, error } = await supabase
       .from('trips')
       .select(SELECT)
@@ -67,6 +76,8 @@ async function fetchTrip(id: string): Promise<Loaded> {
     if (error) return { kind: 'error' };
     if (!data) return { kind: 'missing' };
     const author = data.profiles;
+    const fetchedRoute = await routePromise;
+    const route = data.stops.length >= 2 ? fetchedRoute : null;
     const stops = [...data.stops]
       .sort((a, b) => a.position - b.position)
       .map<TripStop>((s) => ({
@@ -90,6 +101,8 @@ async function fetchTrip(id: string): Promise<Loaded> {
         description: data.description,
         coverPath: data.cover_path,
         visibility: data.visibility === 'public' ? 'public' : 'private',
+        travelMode: asTravelMode(data.travel_mode),
+        route,
         createdAt: data.created_at,
         author: {
           username: author?.username ?? '',
@@ -173,6 +186,16 @@ export function useTrip(id: string): TripState {
     start('initial');
   }, [start]);
 
+  const refreshRoute = useCallback(async () => {
+    const current = tripRef.current;
+    if (!current) return;
+    const route = current.stops.length >= 2 ? await fetchTripRoute(current.id) : null;
+    // Ignore the answer if the trip was reloaded meanwhile.
+    if (tripRef.current !== current) return;
+    tripRef.current = { ...current, route };
+    setTrip(tripRef.current);
+  }, []);
+
   const setVisibility = useCallback(
     async (next: 'public' | 'private') => {
       try {
@@ -227,5 +250,5 @@ export function useTrip(id: string): TripState {
     [trip, profile],
   );
 
-  return { trip, status, isOwner, refreshError, refreshing, refresh, retry, setVisibility, remove };
+  return { trip, status, isOwner, refreshError, refreshing, refresh, retry, refreshRoute, setVisibility, remove };
 }

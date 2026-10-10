@@ -56,7 +56,7 @@ export function StopPhotoStrip({
               accessibilityLabel={`Photo ${i + 1} of ${photos.length} for ${label}`}
               style={[
                 styles.tile,
-                { backgroundColor: theme.surface },
+                { backgroundColor: theme.surfaceMuted },
                 isBroken && { borderWidth: 2, borderColor: theme.danger },
               ]}>
               {isBroken ? (
@@ -76,7 +76,7 @@ export function StopPhotoStrip({
                 />
               ) : null}
             </View>
-            <Pressable
+            <Pressable collapsable={false}
               accessibilityRole="button"
               accessibilityLabel={`Remove photo ${i + 1}`}
               accessibilityState={{ disabled }}
@@ -84,18 +84,18 @@ export function StopPhotoStrip({
               onPress={() => onRemove(stopId, p.id)}
               style={styles.close}>
               <View style={[styles.closeGlyph, { backgroundColor: theme.overlay }]}>
-                <Icon name="close" size={14} color="#FFFFFF" />
+                <Icon name="close" size={14} color="onImage" />
               </View>
             </Pressable>
           </View>
         );
       })}
       {picking ? (
-        <View style={[styles.tile, styles.center, { backgroundColor: theme.surface }]}>
+        <View style={[styles.tile, styles.center, { backgroundColor: theme.surfaceMuted }]}>
           <ActivityIndicator />
         </View>
       ) : remaining > 0 ? (
-        <Pressable
+        <Pressable collapsable={false}
           accessibilityRole="button"
           accessibilityLabel={`Add photo to stop ${stopNumber}`}
           accessibilityHint={`You can add ${remaining} more`}

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>onMyWay mark</title>
+  <defs>
+    <linearGradient id="pin" x1="312" y1="200" x2="712" y2="740" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F2592B"/>
+      <stop offset="1" stop-color="#C73A10"/>
+    </linearGradient>
+  </defs>
+  <!-- Map pin with a transparent hole. Everything sits inside the central 676 px (adaptive-icon safe zone). -->
+  <path fill="url(#pin)" fill-rule="evenodd"
+        d="M512 740 C512 740 312 560 312 400 A200 200 0 0 1 712 400 C712 560 512 740 512 740 Z
+           M434 400 a78 78 0 1 0 156 0 a78 78 0 1 0 -156 0 Z"/>
+  <!-- Dotted "way" under the pin tip -->
+  <path d="M330 812 Q512 880 694 812" fill="none" stroke="#C73A10" stroke-width="36"
+        stroke-linecap="round" stroke-dasharray="0.1 64"/>
+</svg>

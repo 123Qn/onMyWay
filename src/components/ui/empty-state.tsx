@@ -31,11 +31,13 @@ export function EmptyState({
   return (
     <View testID={testID} accessible={false} style={[styles.container, style]}>
       {icon ? (
-        <View style={[styles.iconCircle, { backgroundColor: theme.primarySoft }]}>
-          <Icon name={icon} size={Layout.iconSize.xl} color="primary" />
+        <View style={[styles.ring, { backgroundColor: theme.primarySoft + '66' }]}>
+          <View style={[styles.iconCircle, { backgroundColor: theme.primarySoft }]}>
+            <Icon name={icon} size={Layout.iconSize.xl} color="primary" />
+          </View>
         </View>
       ) : null}
-      <ThemedText type="subtitle" accessibilityRole="header" style={styles.centerText}>
+      <ThemedText type="heading" accessibilityRole="header" style={styles.centerText}>
         {title}
       </ThemedText>
       {message ? (
@@ -56,9 +58,16 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     maxWidth: 320,
   },
+  ring: {
+    width: 120,
+    height: 120,
+    borderRadius: Radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   iconCircle: {
-    width: 64,
-    height: 64,
+    width: 88,
+    height: 88,
     borderRadius: Radius.full,
     alignItems: 'center',
     justifyContent: 'center',

@@ -59,3 +59,11 @@ export function formatRelativeLong(iso: string, now: Date = new Date()): string 
   if (diff < 7 * DAY) return plural(Math.floor(diff / DAY), 'day');
   return formatDateLong(iso);
 }
+
+/** "12 Mar" (this year) or "12 Mar 2025" (other years). Unlike formatRelativeShort, never relative. */
+export function formatDateShort(iso: string, now: Date = new Date()): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const base = `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]}`;
+  return date.getFullYear() === now.getFullYear() ? base : `${base} ${date.getFullYear()}`;
+}

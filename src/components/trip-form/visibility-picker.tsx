@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
-import { Layout, Radius, Spacing } from '@/constants/theme';
+import { FontFamily, Layout, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Visibility } from '@/lib/trip-form';
 
@@ -29,7 +29,7 @@ export function VisibilityPicker({ value, disabled, onChange }: VisibilityPicker
         {OPTIONS.map((o) => {
           const selected = o.value === value;
           return (
-            <Pressable
+            <Pressable collapsable={false}
               key={o.value}
               accessibilityRole="radio"
               accessibilityLabel={`${o.title}. ${o.caption}`}
@@ -40,7 +40,7 @@ export function VisibilityPicker({ value, disabled, onChange }: VisibilityPicker
                 styles.row,
                 {
                   borderColor: selected ? theme.primary : 'transparent',
-                  backgroundColor: selected ? theme.primarySoft : theme.surface,
+                  backgroundColor: selected ? theme.primarySoft : theme.surfaceMuted,
                 },
               ]}>
               <View style={styles.text}>
@@ -68,7 +68,7 @@ export function VisibilityPicker({ value, disabled, onChange }: VisibilityPicker
 
 const styles = StyleSheet.create({
   group: { gap: Spacing.two },
-  label: { fontWeight: '600' },
+  label: { fontFamily: FontFamily.semibold },
   options: { gap: Spacing.two },
   row: {
     flexDirection: 'row',
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
     minHeight: 56,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
-    borderRadius: Radius.md,
+    borderRadius: Radius.lg,
     borderWidth: 2,
   },
   text: { flex: 1, gap: Spacing.half },

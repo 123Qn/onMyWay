@@ -3,13 +3,17 @@ import { useState } from 'react';
 import { StyleSheet } from 'react-native';
 
 import { ProfileHeader } from '@/components/profile/profile-header';
-import { ProfileTripList } from '@/components/profile/profile-trip-list';
+import { profileStatItems } from '@/components/profile/stats-row';
+import { ProfileTripList, type ProfileTab } from '@/components/profile/profile-trip-list';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Screen } from '@/components/ui/screen';
 import { Spacing } from '@/constants/theme';
+import { useProfileStats } from '@/hooks/use-profile-stats';
 import { useProfileTrips } from '@/hooks/use-profile-trips';
+import { useSavedTrips } from '@/hooks/use-saved-trips';
+import { firstCover } from '@/lib/profile-cover';
 import { getAvatarUrl } from '@/lib/avatar-url';
 import { signOutUser } from '@/lib/sign-out';
 import { useSession } from '@/providers/session-provider';
@@ -17,8 +21,13 @@ import { useSession } from '@/providers/session-provider';
 export default function ProfileScreen() {
   const { profile, refreshProfile } = useSession();
   const trips = useProfileTrips({ ownerId: profile?.id ?? null, publicOnly: false });
+  const stats = useProfileStats(profile?.id ?? null, { watchTripEvents: true });
   const [signingOut, setSigningOut] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [tab, setTab] = useState<ProfileTab>('trips');
+  // The saved list is fetched the first time its tab opens, never earlier.
+  const [savedOpened, setSavedOpened] = useState(false);
+  const saved = useSavedTrips({ enabled: savedOpened });
 
   const onSignOut = async () => {
     if (signingOut) return;
@@ -36,18 +45,20 @@ export default function ProfileScreen() {
         username={profile?.username ?? ''}
         avatarUrl={getAvatarUrl(profile?.avatar_path)}
         bio={profile?.bio}
-        tripCount={trips.count}
+        cover={firstCover(trips)}
+        onCoverError={trips.retryCover}
+        stats={profileStatItems(stats.stats, stats.error)}
         actions={
           <>
             <Button
               title="Edit profile"
-              variant="secondary"
+              variant="primary"
               onPress={() => router.push('/profile/edit')}
               style={styles.action}
             />
             <Button
               title="Sign out"
-              variant="ghost"
+              variant="secondary"
               onPress={onSignOut}
               loading={signingOut}
               style={styles.action}
@@ -70,11 +81,17 @@ export default function ProfileScreen() {
     <Screen tabBarInset padded={false} keyboardAvoiding={false}>
       <ProfileTripList
         trips={trips}
+        saved={saved}
+        tab={tab}
+        onTabChange={(next) => {
+          if (next === 'saved') setSavedOpened(true);
+          setTab(next);
+        }}
         header={header}
         loadError="Could not load your trips."
         refreshError="Could not load your trips."
         onPressTrip={(id) => router.push(`/trip/${id}`)}
-        onRefresh={refreshProfile}
+        onRefresh={() => Promise.all([refreshProfile(), stats.refetch()])}
         empty={
           <EmptyState
             icon="map"
@@ -90,6 +107,6 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  action: { flex: 1 },
+  action: { flex: 1, maxWidth: 168 },
   banner: { marginBottom: Spacing.two },
 });

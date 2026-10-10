@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360">
+  <title>onMyWay</title>
+  <defs>
+    <linearGradient id="pin" x1="312" y1="200" x2="712" y2="740" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F2592B"/>
+      <stop offset="1" stop-color="#C73A10"/>
+    </linearGradient>
+  </defs>
+  <!-- Same pin as mark.svg, scaled 0.42 -->
+  <g transform="translate(-111 -40) scale(0.42)">
+    <path fill="url(#pin)" fill-rule="evenodd"
+          d="M512 740 C512 740 312 560 312 400 A200 200 0 0 1 712 400 C712 560 512 740 512 740 Z
+             M434 400 a78 78 0 1 0 156 0 a78 78 0 1 0 -156 0 Z"/>
+    <path d="M330 812 Q512 880 694 812" fill="none" stroke="#C73A10" stroke-width="36"
+          stroke-linecap="round" stroke-dasharray="0.1 64"/>
+  </g>
+  <!-- Wordmark. Needs Plus Jakarta Sans Bold installed when exporting, or convert text to outlines first.
+       Dark-mode variant: change the "on" and "Way" fill from #1C1815 to #F7F2EC. -->
+  <text x="230" y="238" font-family="'Plus Jakarta Sans', sans-serif" font-weight="700" font-size="170"
+        letter-spacing="-4" fill="#1C1815">on<tspan fill="#C73A10">My</tspan>Way</text>
+</svg>

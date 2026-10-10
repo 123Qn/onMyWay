@@ -1,6 +1,20 @@
 /** Pure helpers that build "directions" URLs for Google Maps and Apple Maps. */
 
+import type { TravelMode } from '@/lib/trip-form';
+
 export type MapPoint = { lat: number; lng: number };
+
+/** Google Maps `travelmode` values (checked against the Maps URLs docs). */
+const GOOGLE_MODE: Record<TravelMode, string> = {
+  driving: 'driving',
+  walking: 'walking',
+  cycling: 'bicycling',
+};
+
+/** Apple Maps `dirflg` flag; cycling has none, so Apple picks its default. */
+function appleModeParam(mode: TravelMode): string {
+  return mode === 'driving' ? '&dirflg=d' : mode === 'walking' ? '&dirflg=w' : '';
+}
 
 /**
  * Google Maps URLs accept an origin, a destination and at most 9 waypoints
@@ -41,12 +55,12 @@ export function splitIntoLegs<T>(points: T[], maxPoints: number = GOOGLE_MAX_POI
  * origin, last the destination, the points between are waypoints. Callers split first
  * (see splitIntoLegs) so a leg never exceeds GOOGLE_MAX_POINTS.
  */
-export function googleDirectionsUrl(points: MapPoint[]): string {
+export function googleDirectionsUrl(points: MapPoint[], mode: TravelMode = 'driving'): string {
   if (points.length === 0) throw new Error('At least one point is required');
   const base = 'https://www.google.com/maps/dir/?api=1';
   const last = points[points.length - 1];
   if (points.length === 1) {
-    return `${base}&destination=${encodeURIComponent(coord(last))}`;
+    return `${base}&destination=${encodeURIComponent(coord(last))}&travelmode=${GOOGLE_MODE[mode]}`;
   }
   const parts = [
     `origin=${encodeURIComponent(coord(points[0]))}`,
@@ -54,19 +68,19 @@ export function googleDirectionsUrl(points: MapPoint[]): string {
   ];
   const waypoints = points.slice(1, -1).map(coord);
   if (waypoints.length > 0) parts.push(`waypoints=${encodeURIComponent(waypoints.join('|'))}`);
-  parts.push('travelmode=driving');
+  parts.push(`travelmode=${GOOGLE_MODE[mode]}`);
   return `${base}&${parts.join('&')}`;
 }
 
 /** Apple Maps cannot take waypoints reliably: one route from the first to the last point. */
-export function appleDirectionsUrl(points: MapPoint[]): string {
+export function appleDirectionsUrl(points: MapPoint[], mode: TravelMode = 'driving'): string {
   if (points.length === 0) throw new Error('At least one point is required');
   const last = points[points.length - 1];
   if (points.length === 1) {
-    return `https://maps.apple.com/?daddr=${encodeURIComponent(coord(last))}&dirflg=d`;
+    return `https://maps.apple.com/?daddr=${encodeURIComponent(coord(last))}${appleModeParam(mode)}`;
   }
   return (
     `https://maps.apple.com/?saddr=${encodeURIComponent(coord(points[0]))}` +
-    `&daddr=${encodeURIComponent(coord(last))}&dirflg=d`
+    `&daddr=${encodeURIComponent(coord(last))}${appleModeParam(mode)}`
   );
 }

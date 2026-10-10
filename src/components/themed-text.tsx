@@ -1,6 +1,6 @@
-import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
+import { StyleSheet, Text, type TextProps } from 'react-native';
 
-import { Fonts, ThemeColor, Typography } from '@/constants/theme';
+import { FontFamily, Fonts, ThemeColor, Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
@@ -16,7 +16,9 @@ export type ThemedTextProps = TextProps & {
     | 'display'
     | 'subheading'
     | 'bodyStrong'
-    | 'caption';
+    | 'caption'
+    | 'heading'
+    | 'statValue';
   themeColor?: ThemeColor;
 };
 
@@ -30,7 +32,11 @@ export function ThemedText({
   const theme = useTheme();
   const isLink = type === 'link' || type === 'linkPrimary';
   const color = theme[themeColor ?? (isLink ? 'primary' : 'text')];
-  const defaultMultiplier = type === 'title' || type === 'display' ? 1.6 : undefined;
+  const defaultMultiplier = type === 'title' || type === 'display' || type === 'statValue'
+      ? 1.6
+      : type === 'heading'
+        ? 1.8
+        : undefined;
 
   return (
     <Text
@@ -45,13 +51,12 @@ const typeStyles = StyleSheet.create({
   default: Typography.body,
   title: Typography.title,
   subtitle: Typography.heading,
-  small: { ...Typography.label, fontWeight: '500' },
-  smallBold: { ...Typography.label, fontWeight: '700' },
-  link: { fontSize: 14, lineHeight: 20, fontWeight: '600' },
-  linkPrimary: { fontSize: 14, lineHeight: 20, fontWeight: '600' },
+  small: { ...Typography.label, fontFamily: FontFamily.medium },
+  smallBold: { ...Typography.label, fontFamily: FontFamily.bold },
+  link: { fontSize: 14, lineHeight: 20, fontFamily: FontFamily.semibold },
+  linkPrimary: { fontSize: 14, lineHeight: 20, fontFamily: FontFamily.semibold },
   code: {
     fontFamily: Fonts.mono,
-    fontWeight: Platform.select({ android: '700' }) ?? '500',
     fontSize: 12,
     lineHeight: 16,
   },
@@ -59,4 +64,6 @@ const typeStyles = StyleSheet.create({
   subheading: Typography.subheading,
   bodyStrong: Typography.bodyStrong,
   caption: Typography.caption,
+  heading: Typography.heading,
+  statValue: { ...Typography.statValue, fontVariant: ['tabular-nums'] },
 });

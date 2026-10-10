@@ -1,3 +1,5 @@
+import { routeDistanceKm } from '@/lib/geo';
+
 export const MAX_STOPS = 20;
 export const MAX_PHOTOS_PER_STOP = 5;
 export const TITLE_MAX = 120;
@@ -5,6 +7,7 @@ export const STOP_NAME_MAX = 120;
 export const TEXT_MAX = 5000;
 
 export type Visibility = 'public' | 'private';
+export type TravelMode = 'driving' | 'walking' | 'cycling';
 
 /** `uri` = local compressed file; `path` = storage path (set once uploaded, or for server photos). */
 export type PhotoValue = { id: string; uri: string | null; path: string | null };
@@ -26,12 +29,13 @@ export type TripFormValues = {
   title: string;
   description: string;
   visibility: Visibility;
+  travelMode: TravelMode;
   cover: CoverValue | null;
   stops: StopValue[];
 };
 
 export function emptyForm(): TripFormValues {
-  return { title: '', description: '', visibility: 'public', cover: null, stops: [] };
+  return { title: '', description: '', visibility: 'public', travelMode: 'driving', cover: null, stops: [] };
 }
 
 /** Trim and collapse 3+ newlines to 2; empty becomes null (never send ''). */
@@ -55,6 +59,7 @@ export function normalizeForm(form: TripFormValues): string {
     t: form.title.trim(),
     d: normalizeText(form.description),
     v: form.visibility,
+    m: form.travelMode,
     c: form.cover ? form.cover.id : null,
     s: form.stops.map((s) => [
       s.id,
@@ -205,4 +210,42 @@ export function pendingUploads(form: TripFormValues): PendingUpload[] {
     }
   }
   return items;
+}
+
+/** Drafts saved before travel modes existed have no value: they load as driving. */
+export function withTravelModeDefault(form: TripFormValues): TripFormValues {
+  const mode = (form as Partial<TripFormValues>).travelMode;
+  return mode === 'walking' || mode === 'cycling' || mode === 'driving'
+    ? form
+    : { ...form, travelMode: 'driving' };
+}
+
+/** Routing needs 2+ stops that are not all at one point (under 10 m, as the distance tile treats them). */
+export function hasRoutableStops(stops: readonly { lat: number; lng: number }[]): boolean {
+  return (routeDistanceKm(stops) ?? 0) >= 0.01;
+}
+
+/** True when the travel mode, or the order or position of the stops, differs (a stored route would be stale). */
+export function routeInputsChanged(initial: TripFormValues, form: TripFormValues): boolean {
+  if (initial.travelMode !== form.travelMode) return true;
+  if (initial.stops.length !== form.stops.length) return true;
+  return form.stops.some((s, i) => {
+    const o = initial.stops[i];
+    return o.id !== s.id || o.lat !== s.lat || o.lng !== s.lng;
+  });
+}
+
+/**
+ * Whether saving should (re)compute the road route: at least 2 stops AND the stored route is
+ * missing, failed or stale. A fresh 'none' answer is never retried. `storedStatus` is the status
+ * of the route as loaded with the trip (null = never computed or already stale).
+ */
+export function needsRoute(
+  initial: TripFormValues,
+  form: TripFormValues,
+  storedStatus: 'ok' | 'none' | 'error' | null,
+): boolean {
+  if (!hasRoutableStops(form.stops)) return false;
+  if (routeInputsChanged(initial, form)) return true;
+  return storedStatus === null || storedStatus === 'error';
 }

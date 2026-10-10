@@ -2,10 +2,10 @@ import { Link } from 'expo-router';
 import { useRef, useState } from 'react';
 import { StyleSheet, View, type TextInput } from 'react-native';
 
+import { AuthScreen } from '@/components/auth/auth-screen';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/ui/error-banner';
-import { Screen } from '@/components/ui/screen';
 import { TextField } from '@/components/ui/text-field';
 import { Spacing } from '@/constants/theme';
 import { mapSignInError } from '@/lib/auth-errors';
@@ -70,7 +70,7 @@ export default function SignInScreen() {
   };
 
   return (
-    <Screen scroll padded="auth" centered>
+    <AuthScreen>
       <ThemedText type="title" accessibilityRole="header">
         Sign in
       </ThemedText>
@@ -82,6 +82,7 @@ export default function SignInScreen() {
         />
       ) : null}
       <TextField
+        variant="onCard"
         ref={emailRef}
         label="Email"
         value={email}
@@ -101,6 +102,7 @@ export default function SignInScreen() {
         onSubmitEditing={() => passwordRef.current?.focus()}
       />
       <TextField
+        variant="onCard"
         ref={passwordRef}
         label="Password"
         value={password}
@@ -116,14 +118,14 @@ export default function SignInScreen() {
         returnKeyType="go"
         onSubmitEditing={onSubmit}
       />
-      <Button title="Sign in" onPress={onSubmit} loading={submitting} fullWidth />
+      <Button title="Sign in" onPress={onSubmit} loading={submitting} size="lg" fullWidth />
       <View style={styles.linkRow}>
         <ThemedText themeColor="textMuted">New here?</ThemedText>
         <Link href="/sign-up" accessibilityRole="link" style={styles.link}>
           <ThemedText type="link">Create an account</ThemedText>
         </Link>
       </View>
-    </Screen>
+    </AuthScreen>
   );
 }
 

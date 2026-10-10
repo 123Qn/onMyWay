@@ -5,7 +5,7 @@ import MapView, { Marker, Polyline, type Region } from 'react-native-maps';
 import type { TripMapHandle, TripMapProps, TripMapStop } from './trip-map.types';
 
 import { mapStyleDark } from '@/constants/map-style-dark';
-import { Radius } from '@/constants/theme';
+import { FontFamily, Radius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -16,6 +16,8 @@ const FIT_PADDING = { top: 48, right: 48, bottom: 48, left: 48 };
 const MARKER = 32;
 const MARKER_SELECTED = 40;
 const SETTLE_MS = 400;
+const DASH_PATTERN = [10, 8];
+const NO_COORDINATES: { latitude: number; longitude: number }[] = [];
 
 const coordKey = (s: { lat: number; lng: number }) => `${s.lat.toFixed(6)},${s.lng.toFixed(6)}`;
 
@@ -60,6 +62,7 @@ function StopMarker({ stop, selected, onPress }: StopMarkerProps) {
             height: size,
             borderRadius: size / 2,
             backgroundColor: selected ? theme.text : theme.primary,
+            borderColor: theme.onImage,
           },
         ]}>
         <Text
@@ -73,7 +76,7 @@ function StopMarker({ stop, selected, onPress }: StopMarkerProps) {
 }
 
 export const TripMap = forwardRef<TripMapHandle, TripMapProps>(function TripMap(
-  { stops, selectedStopId = null, onSelectStop, height },
+  { stops, selectedStopId = null, onSelectStop, height, route = null },
   ref,
 ) {
   const theme = useTheme();
@@ -91,6 +94,8 @@ export const TripMap = forwardRef<TripMapHandle, TripMapProps>(function TripMap(
     () => stops.map((s) => ({ latitude: s.lat, longitude: s.lng })),
     [stops],
   );
+  const road = route && route.length >= 2 ? route : null;
+  const hasRoute = road !== null;
   const distinct = useMemo(() => new Set(stops.map(coordKey)).size, [stops]);
   // Changes only when the set/order of points changes (not on every parent render).
   const stopsKey = useMemo(() => stops.map(coordKey).join('|'), [stops]);
@@ -171,9 +176,10 @@ export const TripMap = forwardRef<TripMapHandle, TripMapProps>(function TripMap(
     <View
       accessible
       accessibilityRole="image"
-      accessibilityLabel={`Map of the trip route with ${stops.length} stops. The stop list below has the same information.`}
+      accessibilityLabel={`Map of the trip route with ${stops.length} stops${hasRoute ? ', following roads' : ''}. The stop list below has the same information.`}
       style={[styles.wrapper, { height: boxHeight, backgroundColor: theme.surface }]}>
       <View
+        collapsable={false}
         style={StyleSheet.absoluteFill}
         importantForAccessibility="no-hide-descendants"
         accessibilityElementsHidden>
@@ -192,14 +198,40 @@ export const TripMap = forwardRef<TripMapHandle, TripMapProps>(function TripMap(
             deltaRef.current = region.latitudeDelta;
           }}
           onPress={() => onSelectStop?.(null)}>
-          {stops.length >= 2 ? (
-            <Polyline
-              coordinates={coordinates}
-              strokeColor={theme.primary}
-              strokeWidth={4}
-              lineJoin="round"
-            />
-          ) : null}
+          {/*
+            Three polylines are ALWAYS mounted, in this order and before the markers, so the native
+            child list never changes shape when the route loads (Android/Fabric cannot insert views
+            ahead of existing ones). Inactive layers get no coordinates. The dashed layer is separate
+            because Android cannot clear a dash pattern once set.
+          */}
+          <Polyline
+            key="route-casing"
+            coordinates={road ?? NO_COORDINATES}
+            strokeColor={theme.surface}
+            strokeWidth={8}
+            lineJoin="round"
+            lineCap="round"
+            zIndex={1}
+          />
+          <Polyline
+            key="route-line"
+            coordinates={road ?? NO_COORDINATES}
+            strokeColor={theme.primary}
+            strokeWidth={5}
+            lineJoin="round"
+            lineCap="round"
+            zIndex={2}
+          />
+          <Polyline
+            key="route-fallback"
+            coordinates={!road && stops.length >= 2 ? coordinates : NO_COORDINATES}
+            strokeColor={theme.primary}
+            strokeWidth={3}
+            lineDashPattern={DASH_PATTERN}
+            lineCap="butt"
+            lineJoin="round"
+            zIndex={2}
+          />
           {stops.map((stop) => (
             <StopMarker
               key={stop.id}
@@ -215,12 +247,11 @@ export const TripMap = forwardRef<TripMapHandle, TripMapProps>(function TripMap(
 });
 
 const styles = StyleSheet.create({
-  wrapper: { borderRadius: Radius.lg, overflow: 'hidden' },
+  wrapper: { borderRadius: Radius.xl, overflow: 'hidden' },
   marker: {
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#FFFFFF',
   },
-  markerText: { fontSize: 14, fontWeight: '700' },
+  markerText: { fontSize: 14, fontFamily: FontFamily.bold },
 });

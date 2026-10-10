@@ -3,7 +3,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
-import { Layout, Radius, Spacing } from '@/constants/theme';
+import { Layout, Radius, Spacing, shadow } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { PublishProgress as Progress, PublishStep } from '@/lib/trip-publish';
 
@@ -19,6 +19,8 @@ export type PublishProgressProps = {
   progress?: Progress | null;
   /** Upload counter of this attempt; null/zero total hides the photos row and bar. */
   photos?: { done: number; total: number } | null;
+  /** False hides the "Calculating route" row (fewer than 2 distinct stops). */
+  routing?: boolean;
   failure?: PublishFailure | null;
   /** Save variant: current label, e.g. "Uploading photos 2 of 5". */
   label?: string;
@@ -31,16 +33,20 @@ const STEPS: { step: PublishStep; label: string }[] = [
   { step: 'trip', label: 'Creating your trip' },
   { step: 'photos', label: 'Uploading photos' },
   { step: 'stops', label: 'Saving stops' },
+  { step: 'route', label: 'Calculating route' },
   { step: 'finish', label: 'Finishing up' },
 ];
 
-type Status = 'pending' | 'active' | 'done' | 'failed';
+type Status = 'pending' | 'active' | 'done' | 'failed' | 'skipped';
+
+const ROUTE_SKIPPED_DETAIL = 'Straight lines used';
 
 /** Blocking overlay used while publishing, saving edits or discarding a half-published trip. */
 export function PublishProgress({
   variant,
   progress,
   photos = null,
+  routing = false,
   failure,
   label,
   onRetry,
@@ -52,7 +58,10 @@ export function PublishProgress({
   const simpleLabel =
     variant === 'discard' ? 'Discarding...' : (label ?? 'Saving changes...');
   const showPhotos = !!photos && photos.total > 0;
-  const steps = showPhotos ? STEPS : STEPS.filter((s) => s.step !== 'photos');
+  const steps = STEPS.filter(
+    (s) => (s.step !== 'photos' || showPhotos) && (s.step !== 'route' || routing),
+  );
+  const routeFailed = !!progress?.route && progress.route.status !== 'ok';
   const order = STEPS.map((s) => s.step);
   const current = failure?.step ?? progress?.step ?? 'trip';
 
@@ -60,7 +69,7 @@ export function PublishProgress({
     const i = order.indexOf(step);
     const c = order.indexOf(current);
     if (failure && step === failure.step) return 'failed';
-    if (i < c) return 'done';
+    if (i < c) return step === 'route' && routeFailed ? 'skipped' : 'done';
     if (i === c) return 'active';
     return 'pending';
   };
@@ -72,7 +81,7 @@ export function PublishProgress({
       accessibilityViewIsModal
       onStartShouldSetResponder={() => true}
       style={[styles.scrim, { backgroundColor: theme.overlay }]}>
-      <View style={[styles.card, { backgroundColor: theme.surface }]}>
+      <View style={[styles.card, { backgroundColor: theme.surface }, shadow(theme, 'lg')]}>
         {simple ? (
           <View style={styles.simple} accessibilityLiveRegion="polite">
             <ActivityIndicator />
@@ -80,7 +89,7 @@ export function PublishProgress({
           </View>
         ) : (
           <>
-            <ThemedText type="subtitle" accessibilityRole="header">
+            <ThemedText type="heading" accessibilityRole="header">
               Publishing your trip
             </ThemedText>
             {/* One announcement per step; photo progress is exposed through the bar's value. */}
@@ -93,14 +102,21 @@ export function PublishProgress({
                 const isPhotos = s.step === 'photos';
                 const total = isPhotos ? (photos?.total ?? 0) : 0;
                 const done = isPhotos ? (photos?.done ?? 0) : 0;
+                const skipped = status === 'skipped';
                 return (
                   <View key={s.step}>
-                    <View style={styles.row}>
+                    <View
+                      collapsable={false}
+                      style={styles.row}
+                      accessible={skipped}
+                      accessibilityLabel={skipped ? `${s.label}. ${ROUTE_SKIPPED_DETAIL}.` : undefined}>
                       <View style={styles.statusIcon}>
                         {status === 'active' ? (
                           <ActivityIndicator size="small" />
                         ) : status === 'done' ? (
                           <Icon name="check" size={Layout.iconSize.md} color="success" />
+                        ) : skipped ? (
+                          <Icon name="alert" size={Layout.iconSize.md} color="textMuted" />
                         ) : status === 'failed' ? (
                           <Icon name="alert" size={Layout.iconSize.md} color="danger" />
                         ) : (
@@ -115,6 +131,11 @@ export function PublishProgress({
                       {isPhotos && total > 0 ? (
                         <ThemedText type="caption" themeColor="textMuted">
                           {`${done} of ${total}`}
+                        </ThemedText>
+                      ) : null}
+                      {skipped ? (
+                        <ThemedText type="caption" themeColor="textMuted">
+                          {ROUTE_SKIPPED_DETAIL}
                         </ThemedText>
                       ) : null}
                     </View>
@@ -171,7 +192,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 360,
     padding: Spacing.four,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     gap: Spacing.three,
   },
   simple: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
@@ -181,7 +202,7 @@ const styles = StyleSheet.create({
   statusIcon: { width: 24, alignItems: 'center', justifyContent: 'center' },
   pending: { width: 20, height: 20, borderRadius: 10, borderWidth: 2 },
   flex: { flex: 1 },
-  bar: { height: 6, borderRadius: 3, overflow: 'hidden', marginLeft: 32 },
-  barFill: { height: 6, borderRadius: 3 },
+  bar: { height: 6, borderRadius: Radius.full, overflow: 'hidden', marginLeft: 32 },
+  barFill: { height: 6, borderRadius: Radius.full },
   failure: { gap: Spacing.two, alignItems: 'stretch' },
 });

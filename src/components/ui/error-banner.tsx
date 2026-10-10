@@ -36,13 +36,13 @@ export function ErrorBanner({
       accessibilityLiveRegion="polite"
       style={[
         styles.container,
-        { backgroundColor: theme.dangerSoft, borderColor: theme.danger },
+        { backgroundColor: theme.dangerSoft, borderColor: theme.danger + '66' },
         style,
       ]}>
       <Icon name="alert" size={Layout.iconSize.lg} color="danger" />
       <ThemedText style={styles.message}>{message}</ThemedText>
       {onRetry ? (
-        <Button title={retryLabel} variant="ghost" size="sm" loading={retrying} onPress={onRetry} />
+        <Button title={retryLabel} variant="ghost" size="sm" tone="onSoft" loading={retrying} onPress={onRetry} />
       ) : null}
       {onDismiss ? (
         <IconButton icon="close" accessibilityLabel="Dismiss error" onPress={onDismiss} />
@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: Radius.md,
+    borderRadius: Radius.lg,
     padding: Spacing.three,
     gap: Spacing.two,
   },

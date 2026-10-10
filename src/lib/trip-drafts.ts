@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import type { TripFormValues } from '@/lib/trip-form';
+import { withTravelModeDefault, type TripFormValues } from '@/lib/trip-form';
 
 export type TripDraft = { v: 1; savedAt: string; tripId: string | null; form: TripFormValues };
 
@@ -28,7 +28,7 @@ export async function loadDraft(userId: string): Promise<TripDraft | null> {
     const raw = await AsyncStorage.getItem(key(userId));
     if (raw === null) return null;
     const parsed: unknown = JSON.parse(raw);
-    if (isDraft(parsed)) return parsed;
+    if (isDraft(parsed)) return { ...parsed, form: withTravelModeDefault(parsed.form) };
     await AsyncStorage.removeItem(key(userId));
   } catch {
     try {
