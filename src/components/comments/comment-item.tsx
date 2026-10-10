@@ -13,6 +13,7 @@ import type { CommentNode, Thread } from '@/hooks/use-comments';
 import { useTheme } from '@/hooks/use-theme';
 import { formatCount, pluralize } from '@/lib/format-count';
 import { formatRelativeLong, formatRelativeShort } from '@/lib/format-date';
+import { COLLAPSED, COLLAPSED_TEXT, collapsedA11y } from '@/lib/collapse';
 
 const LARGE_TEXT_SCALE = 1.5;
 const AVATAR = 32;
@@ -82,7 +83,8 @@ function CommentItem({
             themeColor="primaryPressed"
             numberOfLines={1}
             maxFontSizeMultiplier={1.5}
-            style={!isAuthor && styles.none}>
+            {...collapsedA11y(!isAuthor)}
+            style={!isAuthor && styles.noneText}>
             {' · Author'}
           </ThemedText>
         </Pressable>
@@ -95,13 +97,22 @@ function CommentItem({
           {node.body}
         </ThemedText>
 
-        <View collapsable={false} style={[styles.status, node.status === 'sent' && styles.none]}>
-          <View collapsable={false} style={sending ? undefined : styles.none}>
+        <View
+          collapsable={false}
+          {...collapsedA11y(node.status === 'sent')}
+          style={[styles.status, node.status === 'sent' && styles.noneColumnHalf]}>
+          <View
+            collapsable={false}
+            {...collapsedA11y(!sending)}
+            style={sending ? undefined : styles.noneColumnOne}>
             <ThemedText type="caption" themeColor="textMuted">
               Sending...
             </ThemedText>
           </View>
-          <View collapsable={false} style={failed ? styles.failedRow : styles.none}>
+          <View
+            collapsable={false}
+            {...collapsedA11y(!failed)}
+            style={failed ? styles.failedRow : styles.noneColumnOne}>
             <Pressable
               collapsable={false}
               accessibilityRole="button"
@@ -119,7 +130,10 @@ function CommentItem({
           </View>
         </View>
 
-        <View collapsable={false} style={[styles.actions, !settled && styles.none]}>
+        <View
+          collapsable={false}
+          {...collapsedA11y(!settled)}
+          style={[styles.actions, !settled && styles.noneColumnHalf]}>
           <Pressable
             collapsable={false}
             accessibilityRole="button"
@@ -130,7 +144,10 @@ function CommentItem({
               Reply
             </ThemedText>
           </Pressable>
-          <View collapsable={false} style={node.canDelete ? undefined : styles.none}>
+          <View
+            collapsable={false}
+            {...collapsedA11y(!node.canDelete)}
+            style={node.canDelete ? undefined : styles.noneRowTwo}>
             <IconButton
               icon="more"
               accessibilityLabel="Comment options"
@@ -141,7 +158,10 @@ function CommentItem({
         </View>
       </View>
 
-      <View collapsable={false} style={[styles.likeColumn, large && styles.likeColumnLarge, !settled && styles.none]}>
+      <View
+        collapsable={false}
+        {...collapsedA11y(!settled)}
+        style={[styles.likeColumn, large && styles.likeColumnLarge, !settled && styles.noneRowGap]}>
         <Pressable
           collapsable={false}
           accessibilityRole="button"
@@ -213,17 +233,21 @@ export function CommentThread({
           accessibilityState={{ expanded, busy: loading }}
           disabled={node.replyCount === 0 || loading}
           onPress={() => onToggleReplies(node)}
+          {...collapsedA11y(node.replyCount === 0)}
           style={[styles.toggle, node.replyCount === 0 && styles.none]}>
           <View collapsable={false} style={[styles.hairline, { backgroundColor: theme.border }]} />
           <ThemedText type="small" themeColor="textMuted" maxFontSizeMultiplier={1.5}>
             {toggleLabel}
           </ThemedText>
-          <View collapsable={false} style={loading ? undefined : styles.none}>
+          <View
+            collapsable={false}
+            {...collapsedA11y(!loading)}
+            style={loading ? undefined : styles.noneRowTwo}>
             <Spinner color="textMuted" />
           </View>
         </Pressable>
 
-        <View collapsable={false} style={expanded ? undefined : styles.none}>
+        <View collapsable={false} {...collapsedA11y(!expanded)} style={expanded ? undefined : styles.none}>
           {replies.map((reply) => (
             <CommentItem
               key={reply.key}
@@ -239,6 +263,7 @@ export function CommentThread({
             accessibilityLabel={remaining === 1 ? 'View 1 more reply' : `View ${remaining} more replies`}
             disabled={remaining === 0 || loading}
             onPress={() => onMoreReplies(node)}
+            {...collapsedA11y(remaining === 0 || !!thread?.error)}
             style={[styles.toggle, (remaining === 0 || !!thread?.error) && styles.none]}>
             <View collapsable={false} style={[styles.hairline, { backgroundColor: theme.border }]} />
             <ThemedText type="small" themeColor="textMuted" maxFontSizeMultiplier={1.5}>
@@ -250,6 +275,7 @@ export function CommentThread({
             accessibilityRole="button"
             accessibilityLabel="Couldn't load replies. Retry"
             onPress={() => onRetryReplies(node)}
+            {...collapsedA11y(!thread?.error)}
             style={[styles.toggle, !thread?.error && styles.none]}>
             <Icon name="alert" size={Layout.iconSize.sm} color="danger" />
             <ThemedText type="small" themeColor="danger" maxFontSizeMultiplier={1.5}>
@@ -314,5 +340,11 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   hairline: { width: 24, height: 1 },
-  none: { display: 'none' },
+  // Collapsed (see lib/collapse): negative margins cancel the parent gap a zero-size child still reserves.
+  none: COLLAPSED,
+  noneText: COLLAPSED_TEXT,
+  noneColumnHalf: { ...COLLAPSED, marginBottom: -Spacing.half },
+  noneColumnOne: { ...COLLAPSED, marginBottom: -Spacing.one },
+  noneRowTwo: { ...COLLAPSED, marginRight: -Spacing.two },
+  noneRowGap: { ...COLLAPSED, marginRight: -GAP },
 });

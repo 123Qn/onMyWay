@@ -11,6 +11,7 @@ import { IconButton } from '@/components/ui/icon-button';
 import { Layout, Radius, Spacing } from '@/constants/theme';
 import type { FeedRepostItem } from '@/hooks/use-feed';
 import { formatRelativeShort } from '@/lib/format-date';
+import { COLLAPSED, collapsedA11y } from '@/lib/collapse';
 
 const CAPTION_LINES = 3;
 const CAPTION_COLLAPSE_CHARS = 140;
@@ -35,15 +36,22 @@ function CaptionSlot({ caption }: { caption: string | null }) {
   const text = caption?.trim() ?? '';
   const collapsible = text.length > CAPTION_COLLAPSE_CHARS || text.split('\n').length > CAPTION_LINES;
   return (
-    <View collapsable={false} style={text ? styles.caption : styles.none}>
+    <View
+      collapsable={false}
+      {...collapsedA11y(!text)}
+      style={text ? styles.caption : styles.noneStack}>
       <ThemedText numberOfLines={collapsible && !expanded ? CAPTION_LINES : undefined}>{text}</ThemedText>
-      <Button
-        title={expanded ? 'less' : 'more'}
-        variant="ghost"
-        size="sm"
-        onPress={() => setExpanded((v) => !v)}
-        style={[styles.more, !collapsible && styles.none]}
-      />
+      <View
+        collapsable={false}
+        {...collapsedA11y(!collapsible)}
+        style={[styles.more, !collapsible && styles.none]}>
+        <Button
+          title={expanded ? 'less' : 'more'}
+          variant="ghost"
+          size="sm"
+          onPress={() => setExpanded((v) => !v)}
+        />
+      </View>
     </View>
   );
 }
@@ -93,7 +101,10 @@ export function RepostCard({
               </ThemedText>
             </View>
           </Pressable>
-          <View collapsable={false} style={isMine ? undefined : styles.none}>
+          <View
+            collapsable={false}
+            {...collapsedA11y(!isMine)}
+            style={isMine ? undefined : styles.noneRow}>
             <IconButton
               icon="more"
               accessibilityLabel="Repost options"
@@ -137,5 +148,8 @@ const styles = StyleSheet.create({
   whoText: { flex: 1, minWidth: 0 },
   caption: { gap: Spacing.one, borderRadius: Radius.md },
   more: { alignSelf: 'flex-start' },
-  none: { display: 'none' },
+  // Collapsed (see lib/collapse); negative margins cancel the gap of the parent.
+  none: { ...COLLAPSED, marginBottom: -Spacing.one },
+  noneStack: { ...COLLAPSED, marginBottom: -(Spacing.three - Spacing.one) },
+  noneRow: { ...COLLAPSED, marginRight: -Spacing.two },
 });

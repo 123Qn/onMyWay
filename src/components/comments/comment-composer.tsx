@@ -9,6 +9,7 @@ import { IconButton } from '@/components/ui/icon-button';
 import { Layout, Radius, Spacing, Typography } from '@/constants/theme';
 import { MAX_COMMENT_LENGTH, type ReplyTarget } from '@/hooks/use-comments';
 import { useTheme } from '@/hooks/use-theme';
+import { COLLAPSED, COLLAPSED_TEXT, collapsedA11y } from '@/lib/collapse';
 
 const COUNTER_FROM = 450;
 const MAX_LINES = 5;
@@ -69,7 +70,8 @@ export function CommentComposer({
       ]}>
       <View
         collapsable={false}
-        style={[styles.banner, { backgroundColor: theme.surfaceMuted }, !replyTo && styles.none]}>
+        {...collapsedA11y(!replyTo)}
+        style={[styles.banner, { backgroundColor: theme.surfaceMuted }, !replyTo && styles.noneColumn]}>
         <ThemedText type="caption" themeColor="textMuted" numberOfLines={1} style={styles.bannerText}>
           {replyTo ? `Replying to @${replyTo.username}` : ''}
         </ThemedText>
@@ -123,7 +125,8 @@ export function CommentComposer({
       <ThemedText
         type="caption"
         themeColor={value.length >= MAX_COMMENT_LENGTH ? 'danger' : 'textMuted'}
-        style={[styles.counter, value.length < COUNTER_FROM && styles.none]}>
+        {...collapsedA11y(value.length < COUNTER_FROM)}
+        style={[styles.counter, value.length < COUNTER_FROM && styles.noneText]}>
         {`${value.length}/${MAX_COMMENT_LENGTH}`}
       </ThemedText>
     </View>
@@ -171,5 +174,7 @@ const styles = StyleSheet.create({
   },
   sendDisabled: { opacity: 0.4 },
   counter: { alignSelf: 'flex-end' },
-  none: { display: 'none' },
+  // Collapsed in the container column: cancel the one gap it still reserves.
+  noneColumn: { ...COLLAPSED, marginBottom: -Spacing.two },
+  noneText: { ...COLLAPSED_TEXT, marginBottom: -Spacing.two },
 });

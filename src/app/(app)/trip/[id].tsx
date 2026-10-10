@@ -56,6 +56,7 @@ import {
 } from '@/lib/geo';
 import { decodePolyline } from '@/lib/polyline';
 import type { TravelMode } from '@/lib/trip-form';
+import { COLLAPSED, collapsedA11y } from '@/lib/collapse';
 
 const MODE_ICON = { driving: 'car', walking: 'walk', cycling: 'bike' } as const;
 
@@ -438,7 +439,7 @@ export default function TripDetailScreen() {
         </View>
 
         {/* Always-mounted slot: a visibility change toggles its content, not the layout. */}
-        <View collapsable={false} style={isPublic ? styles.pad : styles.hidden}>
+        <View collapsable={false} {...collapsedA11y(!isPublic)} style={isPublic ? styles.pad : styles.hidden}>
           {isPublic ? (
             <TripActionBar
               tripId={trip.id}
@@ -668,7 +669,8 @@ const styles = StyleSheet.create({
   center: { textAlign: 'center' },
   scrollContent: { paddingTop: Spacing.two, gap: Spacing.four },
   pad: { paddingHorizontal: Spacing.three },
-  hidden: { display: 'none' },
+  // Collapsed (see lib/collapse); cancels the scrollContent gap.
+  hidden: { ...COLLAPSED, marginBottom: -Spacing.four },
   coverShadow: { borderRadius: Radius.xl },
   cover: {
     width: '100%',

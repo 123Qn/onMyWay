@@ -21,6 +21,7 @@ import { Layout, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import type { ProfileTrips } from "@/hooks/use-profile-trips";
 import type { SavedTrips } from "@/hooks/use-saved-trips";
+import { COLLAPSED, collapsedA11y } from "@/lib/collapse";
 
 export type ProfileTab = "trips" | "saved";
 
@@ -197,6 +198,7 @@ export function ProfileTripList({
               style={[styles.note, !showSaved && styles.noteHidden]}
               accessible={showSaved}
               accessibilityLiveRegion="polite"
+              {...collapsedA11y(!showSaved)}
             >
               <Icon name="lock" size={14} color="textMuted" />
               <ThemedText type="caption" themeColor="textMuted">
@@ -247,7 +249,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     paddingBottom: Layout.gridGap,
   },
-  noteHidden: { display: "none" },
+  noteHidden: COLLAPSED,
   skeletons: { gap: Layout.gridGap },
   banner: { marginTop: Spacing.two, marginBottom: Spacing.two },
   footer: { padding: Spacing.three, alignItems: "center" },

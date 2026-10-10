@@ -21,6 +21,7 @@ import { SocialError, TOAST_RATE_LIMITED, TOAST_TRIP_PRIVATE } from '@/lib/socia
 import { emitSocialEvent, updateTripSocial } from '@/lib/social-store';
 import { showToast } from '@/lib/toast';
 import { emitTripEvent } from '@/lib/trip-events';
+import { COLLAPSED, collapsedA11y } from '@/lib/collapse';
 
 const MAX_CAPTION = 280;
 const COUNTER_FROM = 220;
@@ -187,7 +188,7 @@ function RepostBody() {
         showCounter={caption.length >= COUNTER_FROM}
         editable={!posting}
       />
-      <View collapsable={false} style={errorMessage ? undefined : styles.none}>
+      <View collapsable={false} {...collapsedA11y(!errorMessage)} style={errorMessage ? undefined : styles.none}>
         <ErrorBanner message={errorMessage ?? ''} onRetry={() => void submit()} retrying={posting} />
       </View>
       <Button
@@ -212,6 +213,7 @@ export default function RepostScreen() {
 }
 
 const styles = StyleSheet.create({
-  none: { display: 'none' },
+  // Collapsed (see lib/collapse); cancels the Screen gap.
+  none: { ...COLLAPSED, marginBottom: -Spacing.three },
   submit: { marginTop: Spacing.two },
 });

@@ -8,6 +8,7 @@ import { Layout, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatCount, pluralize } from '@/lib/format-count';
 import { useTripSocial } from '@/lib/social-store';
+import { COLLAPSED, collapsedA11y } from '@/lib/collapse';
 
 type Props = {
   tripId: string;
@@ -19,7 +20,7 @@ type Props = {
 
 /**
  * Horizontal actions for the stacked feed card, repost card and trip detail. Pills wrap at
- * large text. Every conditional part stays mounted and is toggled by style.
+ * large text. Every conditional part stays mounted and is toggled by a collapsing style.
  */
 export function TripActionBar({ tripId, showSave, onOpenComments, onOpenShare }: Props) {
   const theme = useTheme();
@@ -66,6 +67,7 @@ export function TripActionBar({ tripId, showSave, onOpenComments, onOpenShare }:
           accessibilityLabel={`${pluralize(social.likeCount, 'like')}, see who liked`}
           disabled={social.likeCount === 0}
           onPress={() => router.push(`/trip/${tripId}/likes`)}
+          {...collapsedA11y(social.likeCount === 0)}
           style={[styles.likeCount, social.likeCount === 0 && styles.hidden]}>
           <ThemedText type="small" maxFontSizeMultiplier={1.5} style={styles.tabular}>
             {formatCount(social.likeCount)}
@@ -116,7 +118,8 @@ export function TripActionBar({ tripId, showSave, onOpenComments, onOpenShare }:
           styles.saveCircle,
           { backgroundColor: theme.surfaceMuted },
           !showSave && styles.hidden,
-        ]}>
+        ]}
+        {...collapsedA11y(!showSave)}>
         <PopIcon
           name="bookmark"
           filled={social.saved}
@@ -159,6 +162,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  hidden: { display: 'none' },
+  // Collapsed (see lib/collapse); the negative margin cancels the gap of the parent row.
+  hidden: { ...COLLAPSED, marginRight: -Spacing.two },
   tabular: { fontVariant: ['tabular-nums'] },
 });
