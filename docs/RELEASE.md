@@ -38,6 +38,7 @@ expo.dev dashboard (Project -> Environment variables) or CLI:
 | `EXPO_PUBLIC_SUPABASE_ANON_KEY`   | Sensitive   | Public anon key; `EXPO_PUBLIC_*` cannot be "secret". RLS protects data |
 | `GOOGLE_MAPS_ANDROID_API_KEY`     | Sensitive   | Config-time only; ends up in the native manifest. Restrict it in Google Cloud |
 | `NOMINATIM_CONTACT_EMAIL`         | Sensitive   | Config-time only; sent in the Nominatim User-Agent                  |
+| `EXPO_PUBLIC_WEB_BASE_URL`        | Plain text  | Optional. Base URL for https share links (`src/lib/share.ts`); unset = `onmyway://` scheme |
 
 Visibility notes:
 
@@ -61,6 +62,10 @@ npx eas-cli env:list --environment preview
 (`env:create` prompts for the value if `--value` is omitted. Check `eas env:create --help` if flags differ in your CLI version.)
 
 ## 3. First builds (Android)
+
+`expo-dev-client` is installed (required by the `development` profile's `developmentClient: true`).
+After any native dependency change, rebuild the local dev build with `npx expo run:android`
+(or a new `development` EAS build) before testing.
 
 ```bash
 npx eas-cli build --profile development --platform android   # dev client APK
