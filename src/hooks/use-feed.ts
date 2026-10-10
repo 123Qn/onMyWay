@@ -197,6 +197,23 @@ export function useFeed(): Feed {
     [applyFirst],
   );
 
+  // Own profile edits (name, username, avatar) re-read the first page so author and
+  // reposter fields on my cards are fresh.
+  const profileSig = profile
+    ? `${profile.id}|${profile.display_name}|${profile.username}|${profile.avatar_path ?? ''}`
+    : null;
+  const profileSigRef = useRef(profileSig);
+  useEffect(() => {
+    const prev = profileSigRef.current;
+    profileSigRef.current = profileSig;
+    // Skip the first value and sign-in/out transitions; only edits of the same user.
+    if (!prev || !profileSig || prev === profileSig) return;
+    if (prev.split('|')[0] !== profileSig.split('|')[0]) return;
+    const request = ++requestRef.current;
+    loadingMoreRef.current = false;
+    fetchPage(null).then((page) => applyFirst(request, 'refresh', page));
+  }, [profileSig, applyFirst]);
+
   const refresh = useCallback(async () => {
     if (refreshing) return;
     setRefreshing(true);
