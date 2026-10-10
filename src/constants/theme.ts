@@ -45,6 +45,12 @@ export const Colors = {
     onImage: '#FFFFFF',
     onImageMuted: '#F2EDE6',
     scrimChip: 'rgba(0,0,0,0.55)',
+    /** Heart glyph on surface/background (>= 4.3:1 on every light surface). Glyph only. */
+    like: '#D81B45',
+    /** Heart glyph on the white circle over a photo (4.9:1). */
+    likeOnImage: '#D81B45',
+    /** Bookmark glyph on the white circle over a photo (7.2:1, same value in both modes). */
+    saveOnImage: '#A32C09',
     glassFill: 'rgba(255,255,255,0.90)',
     glassBorder: 'rgba(255,255,255,0.65)',
     glassSolid: '#FFFFFF',
@@ -80,6 +86,10 @@ export const Colors = {
     onImage: '#FFFFFF',
     onImageMuted: '#F2EDE6',
     scrimChip: 'rgba(0,0,0,0.55)',
+    /** Heart glyph on dark surfaces (>= 5.6:1). Glyph only. */
+    like: '#FF6B88',
+    likeOnImage: '#D81B45',
+    saveOnImage: '#A32C09',
     glassFill: 'rgba(30,26,23,0.88)',
     glassBorder: 'rgba(255,255,255,0.10)',
     glassSolid: '#26211D',

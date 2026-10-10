@@ -1,11 +1,14 @@
 import { router, useScrollToTop } from 'expo-router';
-import { useEffect, useRef, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated';
 
 import { FeedHeader } from '@/components/feed/feed-header';
 import { ThemedText } from '@/components/themed-text';
+import { RepostCard } from '@/components/trip/repost-card';
+import { TripShareSheet, type ShareTarget } from '@/components/trip/share-sheet';
 import { TripCard, TripCardSkeleton } from '@/components/trip/trip-card';
+import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorBanner } from '@/components/ui/error-banner';
@@ -13,9 +16,10 @@ import { Icon } from '@/components/ui/icon';
 import { Screen } from '@/components/ui/screen';
 import { SkeletonGroup } from '@/components/ui/skeleton';
 import { Layout, Spacing } from '@/constants/theme';
-import { useFeed } from '@/hooks/use-feed';
+import { useFeed, type FeedItem, type FeedRepostItem } from '@/hooks/use-feed';
 import { useGreeting } from '@/hooks/use-greeting';
 import { useTheme } from '@/hooks/use-theme';
+import { confirmRemoveRepost } from '@/lib/repost-actions';
 import { useSession } from '@/providers/session-provider';
 
 const ANIMATED_CARDS = 4;
@@ -30,6 +34,8 @@ export default function FeedScreen() {
   const { profile } = useSession();
   const { greeting, refresh: refreshGreeting } = useGreeting();
   const reduceMotion = useReducedMotion();
+  const [shareTarget, setShareTarget] = useState<ShareTarget | null>(null);
+  const [menuRepost, setMenuRepost] = useState<FeedRepostItem | null>(null);
   // Re-tapping the active Feed tab scrolls back to the top.
   const listRef = useRef<FlatList>(null);
   useScrollToTop(listRef);
@@ -88,12 +94,46 @@ export default function FeedScreen() {
     );
   }
 
+  const openComments = (tripId: string) => router.push(`/trip/${tripId}/comments`);
+
+  const renderFeedItem = (item: FeedItem) => {
+    const trip = item.trip;
+    const isOwner = !!profile && trip.ownerId === profile.id;
+    const openShare = () => setShareTarget({ id: trip.id, title: trip.title, ownerId: trip.ownerId });
+    if (item.kind === 'repost') {
+      return (
+        <RepostCard
+          item={item}
+          isMine={!!profile && item.reposter.id === profile.id}
+          isTripOwner={isOwner}
+          onOpenTrip={() => router.push(`/trip/${trip.id}`)}
+          onOpenReposter={() => router.push(`/user/${item.reposter.username}`)}
+          onOpenComments={() => openComments(trip.id)}
+          onOpenShare={openShare}
+          onOpenMenu={() => setMenuRepost(item)}
+          onCoverError={feed.retryCover}
+        />
+      );
+    }
+    return (
+      <TripCard
+        trip={trip}
+        variant="feed"
+        showAuthor
+        social={{ isOwner, onOpenComments: () => openComments(trip.id), onOpenShare: openShare }}
+        onPress={() => router.push(`/trip/${trip.id}`)}
+        onPressAuthor={() => trip.author && router.push(`/user/${trip.author.username}`)}
+        onCoverError={feed.retryCover}
+      />
+    );
+  };
+
   return (
     <Screen tabBarInset padded={false} keyboardAvoiding={false}>
       <FlatList
         ref={listRef}
         data={feed.items}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.key}
         renderItem={({ item, index }) => (
           <Animated.View
             entering={
@@ -101,14 +141,7 @@ export default function FeedScreen() {
                 ? FadeInDown.duration(250).delay(60 * index)
                 : undefined
             }>
-            <TripCard
-              trip={item}
-              variant="feed"
-              showAuthor
-              onPress={() => router.push(`/trip/${item.id}`)}
-              onPressAuthor={() => item.author && router.push(`/user/${item.author.username}`)}
-              onCoverError={feed.retryCover}
-            />
+            {renderFeedItem(item)}
           </Animated.View>
         )}
         ItemSeparatorComponent={Separator}
@@ -139,6 +172,30 @@ export default function FeedScreen() {
         initialNumToRender={4}
         windowSize={7}
         maxToRenderPerBatch={4}
+      />
+      <TripShareSheet target={shareTarget} onClose={() => setShareTarget(null)} />
+      <BottomSheet
+        visible={!!menuRepost}
+        onClose={() => setMenuRepost(null)}
+        title="Repost options"
+        rows={[
+          {
+            key: 'remove',
+            icon: 'repost',
+            label: 'Remove repost',
+            onPress: () => {
+              const target = menuRepost;
+              setMenuRepost(null);
+              if (target && profile) {
+                confirmRemoveRepost({
+                  tripId: target.trip.id,
+                  userId: profile.id,
+                  repostId: target.repostId,
+                });
+              }
+            },
+          },
+        ]}
       />
     </Screen>
   );

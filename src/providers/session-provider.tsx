@@ -11,6 +11,7 @@ import {
 } from 'react';
 
 import { clearSignedUrlCache } from '@/hooks/use-signed-urls';
+import { resetSocialStore } from '@/lib/social-store';
 import { supabase } from '@/lib/supabase';
 import { isGeneratedUsername } from '@/lib/username';
 import type { Tables } from '@/types/database';
@@ -66,6 +67,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     userIdRef.current = userId;
     // Signed URLs belong to one account: drop them on sign-out, expiry or account switch.
     clearSignedUrlCache();
+    // Likes, saves and counts belong to one account too.
+    resetSocialStore();
   }, [userId]);
 
   useEffect(() => {

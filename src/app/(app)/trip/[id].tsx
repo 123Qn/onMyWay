@@ -24,6 +24,10 @@ import { CollapsibleText } from '@/components/trip/collapsible-text';
 import { StopListItem } from '@/components/trip/stop-list-item';
 import { TripPhotoStrip } from '@/components/trip/photo-strip';
 import { RouteNotice } from '@/components/trip/route-notice';
+import { TripShareSheet } from '@/components/trip/share-sheet';
+import { DoubleTapLike } from '@/components/social/double-tap-like';
+import { TripActionBar } from '@/components/social/trip-action-bar';
+import { SaveCircle } from '@/components/social/trip-action-rail';
 import { TripMap, type TripMapHandle } from '@/components/trip/trip-map';
 import { Avatar } from '@/components/ui/avatar';
 import { Gradient } from '@/components/ui/gradient';
@@ -40,6 +44,7 @@ import { useSignedUrls } from '@/hooks/use-signed-urls';
 import { useTheme } from '@/hooks/use-theme';
 import { useStackScreenOptions } from '@/hooks/use-stack-screen-options';
 import { useTrip, type TripDetail } from '@/hooks/use-trip';
+import { useTripSocialInfo } from '@/hooks/use-trip-social-info';
 import { getAvatarUrl } from '@/lib/avatar-url';
 import { formatDateLong, formatDateShort } from '@/lib/format-date';
 import { durationA11yLabel, formatDuration } from '@/lib/format-duration';
@@ -87,6 +92,9 @@ export default function TripDetailScreen() {
     remove,
   } = useTrip(id);
 
+  // One get_trip_social call: seeds the social store and tells whether Repost is allowed.
+  const social = useTripSocialInfo(id);
+  const [shareOpen, setShareOpen] = useState(false);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const [barHeight, setBarHeight] = useState(DEFAULT_BAR_HEIGHT);
   const [menuBusy, setMenuBusy] = useState(false);
@@ -324,6 +332,8 @@ export default function TripDetailScreen() {
     `Published ${publishedLong}`,
   ].join('. ');
   const coverFallback = Gradients.coverFallbacks[coverFallbackIndex(trip.id)];
+  // Private trips have no social UI at all.
+  const isPublic = trip.visibility === 'public';
 
   return (
     <Screen edges={EDGES} padded={false} keyboardAvoiding={false}>
@@ -335,7 +345,10 @@ export default function TripDetailScreen() {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={() => void refresh()}
+            onRefresh={() => {
+              void refresh();
+              social.reload();
+            }}
             tintColor={theme.primary}
             colors={[theme.primary]}
           />
@@ -353,11 +366,13 @@ export default function TripDetailScreen() {
 
         <View style={styles.pad}>
           <View style={[styles.coverShadow, shadow(theme, 'md'), { backgroundColor: theme.primarySoft }]}>
-            <View
-              accessible={!!coverUrl}
-              accessibilityRole={coverUrl ? 'image' : undefined}
-              accessibilityLabel={coverUrl ? `Cover photo of ${trip.title}` : undefined}
-              style={[styles.cover, { maxHeight: windowHeight * 0.45 }]}>
+            <View style={[styles.cover, { maxHeight: windowHeight * 0.45 }]}>
+              <View
+                style={StyleSheet.absoluteFill}
+                pointerEvents="none"
+                accessible={!!coverUrl}
+                accessibilityRole={coverUrl ? 'image' : undefined}
+                accessibilityLabel={coverUrl ? `Cover photo of ${trip.title}` : undefined}>
               <Gradient {...coverFallback} style={StyleSheet.absoluteFill} />
               {coverUrl ? (
                 <Image
@@ -378,6 +393,7 @@ export default function TripDetailScreen() {
                   <Icon name="map" size={Layout.iconSize.xl} color="onImage" style={styles.dim} />
                 </View>
               )}
+              </View>
               {trip.visibility === 'private' ? (
                 <Chip
                   tone="onImage"
@@ -387,6 +403,8 @@ export default function TripDetailScreen() {
                   style={styles.coverBadge}
                 />
               ) : null}
+              {isPublic ? <DoubleTapLike tripId={trip.id} /> : null}
+              {isPublic && !isOwner ? <SaveCircle tripId={trip.id} /> : null}
             </View>
           </View>
         </View>
@@ -419,6 +437,18 @@ export default function TripDetailScreen() {
             </View>
             <Icon name="chevron-right" size={16} color="textMuted" />
           </Pressable>
+        </View>
+
+        {/* Always-mounted slot: a visibility change toggles its content, not the layout. */}
+        <View collapsable={false} style={isPublic ? styles.pad : styles.hidden}>
+          {isPublic ? (
+            <TripActionBar
+              tripId={trip.id}
+              showSave={!isOwner}
+              onOpenComments={() => router.push(`/trip/${trip.id}/comments`)}
+              onOpenShare={() => setShareOpen(true)}
+            />
+          ) : null}
         </View>
 
         <View
@@ -563,6 +593,12 @@ export default function TripDetailScreen() {
         )}
       </ScrollView>
 
+      <TripShareSheet
+        target={shareOpen ? { id: trip.id, title: trip.title, ownerId: trip.ownerId } : null}
+        onClose={() => setShareOpen(false)}
+        canRepost={social.status === 'ready' ? social.canRepost : !isOwner}
+      />
+
       <FollowTripButton
         stops={mapStops}
         travelMode={travelMode}
@@ -635,6 +671,7 @@ const styles = StyleSheet.create({
   center: { textAlign: 'center' },
   scrollContent: { paddingTop: Spacing.two, gap: Spacing.four },
   pad: { paddingHorizontal: Spacing.three },
+  hidden: { display: 'none' },
   coverShadow: { borderRadius: Radius.xl },
   cover: {
     width: '100%',

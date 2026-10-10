@@ -3,15 +3,34 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TripCardData } from '@/components/trip/trip-card';
 import { useSignedUrls } from '@/hooks/use-signed-urls';
 import { getAvatarUrl } from '@/lib/avatar-url';
+import { seedTripSocial, subscribeSocialEvents } from '@/lib/social-store';
 import { supabase } from '@/lib/supabase';
 import { subscribeTripEvents } from '@/lib/trip-events';
+import { useSession } from '@/providers/session-provider';
 import type { Database } from '@/types/database';
 
 const PAGE_SIZE = 20;
 
 type FeedRow = Database['public']['Functions']['get_feed']['Returns'][number];
 
-export type FeedItem = TripCardData & { ownerId: string };
+export type FeedTrip = TripCardData & { ownerId: string };
+
+/** A trip posted by its author. `key` is `trip:<tripId>`. */
+export type FeedTripItem = { kind: 'trip'; key: string; trip: FeedTrip };
+
+/** A repost; `trip` is the ORIGINAL. `key` is `repost:<repostId>`. */
+export type FeedRepostItem = {
+  kind: 'repost';
+  key: string;
+  repostId: string;
+  caption: string | null;
+  /** When it was reposted. */
+  createdAt: string;
+  reposter: { id: string; username: string; displayName: string; avatarUrl: string | null };
+  trip: FeedTrip;
+};
+
+export type FeedItem = FeedTripItem | FeedRepostItem;
 
 export type Feed = {
   items: FeedItem[];
@@ -36,7 +55,7 @@ type FeedArgs = Database['public']['Functions']['get_feed']['Args'];
 /** Both cursor params are sent together (a row comparison with only one is empty). */
 async function fetchPage(cursor: FeedRow | null): Promise<FeedRow[] | null> {
   const args: FeedArgs = cursor
-    ? { p_before_created_at: cursor.created_at, p_before_id: cursor.trip_id, p_limit: PAGE_SIZE }
+    ? { p_before_created_at: cursor.created_at, p_before_id: cursor.item_id, p_limit: PAGE_SIZE }
     : { p_limit: PAGE_SIZE };
   try {
     const { data, error } = await supabase.rpc('get_feed', args);
@@ -46,7 +65,34 @@ async function fetchPage(cursor: FeedRow | null): Promise<FeedRow[] | null> {
   }
 }
 
+/** Seeds the shared social store from a page; the feed carries counts and flags already. */
+function seedStore(page: FeedRow[], myId: string | null) {
+  seedTripSocial(
+    page.map((r) => ({
+      tripId: r.trip_id,
+      seed: {
+        likeCount: r.like_count,
+        commentCount: r.comment_count,
+        repostCount: r.repost_count,
+        liked: r.liked_by_me,
+        saved: r.saved_by_me,
+        reposted: r.reposted_by_me,
+        // Only my own repost row identifies the repost id.
+        ...(r.item_type === 'repost' && myId && r.reposter_id === myId
+          ? { repostId: r.item_id }
+          : {}),
+      },
+    })),
+  );
+}
+
 export function useFeed(): Feed {
+  const { profile } = useSession();
+  const myIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    myIdRef.current = profile?.id ?? null;
+  }, [profile?.id]);
+  const [hiddenIds, setHiddenIds] = useState<ReadonlySet<string>>(new Set());
   const [rows, setRows] = useState<FeedRow[]>([]);
   const [status, setStatus] = useState<Feed['status']>('loading');
   const [refreshing, setRefreshing] = useState(false);
@@ -70,8 +116,12 @@ export function useFeed(): Feed {
         else setStatus('error');
         return;
       }
-      rowsRef.current = page;
-      setRows(page);
+      // One feed item per item_id (an original and its reposts share trip_id).
+      const seenItems = new Set<string>();
+      const unique = page.filter((r) => !seenItems.has(r.item_id) && !!seenItems.add(r.item_id));
+      seedStore(unique, myIdRef.current);
+      rowsRef.current = unique;
+      setRows(unique);
       setHasMore(page.length === PAGE_SIZE);
       setRefreshError(false);
       setLoadingMore(false);
@@ -118,6 +168,35 @@ export function useFeed(): Feed {
     [applyFirst],
   );
 
+  // Reposts: a new one shows at the top; a removed one leaves at once and returns on failure.
+  useEffect(
+    () =>
+      subscribeSocialEvents((event) => {
+        if (event.type === 'repost-created') {
+          const request = ++requestRef.current;
+          loadingMoreRef.current = false;
+          fetchPage(null).then((page) => applyFirst(request, 'refresh', page));
+        } else if (event.type === 'repost-removing') {
+          setHiddenIds((prev) => new Set(prev).add(event.repostId));
+        } else if (event.type === 'repost-remove-failed') {
+          setHiddenIds((prev) => {
+            const next = new Set(prev);
+            next.delete(event.repostId);
+            return next;
+          });
+        } else {
+          rowsRef.current = rowsRef.current.filter((r) => r.item_id !== event.repostId);
+          setRows(rowsRef.current);
+          setHiddenIds((prev) => {
+            const next = new Set(prev);
+            next.delete(event.repostId);
+            return next;
+          });
+        }
+      }),
+    [applyFirst],
+  );
+
   const refresh = useCallback(async () => {
     if (refreshing) return;
     setRefreshing(true);
@@ -149,8 +228,10 @@ export function useFeed(): Feed {
           setLoadMoreError(true);
           return;
         }
-        const seen = new Set(rowsRef.current.map((r) => r.trip_id));
-        const next = [...rowsRef.current, ...page.filter((r) => !seen.has(r.trip_id))];
+        const seen = new Set(rowsRef.current.map((r) => r.item_id));
+        const fresh = page.filter((r) => !seen.has(r.item_id) && !!seen.add(r.item_id));
+        seedStore(fresh, myIdRef.current);
+        const next = [...rowsRef.current, ...fresh];
         rowsRef.current = next;
         setRows(next);
         setHasMore(page.length === PAGE_SIZE);
@@ -170,21 +251,43 @@ export function useFeed(): Feed {
 
   const items = useMemo<FeedItem[]>(
     () =>
-      rows.map((r) => ({
-        id: r.trip_id,
-        ownerId: r.owner_id,
-        title: r.title,
-        coverPath: r.cover_path || null,
-        coverUrl: r.cover_path ? (urls[r.cover_path] ?? null) : null,
-        stopCount: r.stop_count,
-        createdAt: r.created_at,
-        author: {
-          username: r.username,
-          displayName: r.display_name,
-          avatarUrl: getAvatarUrl(r.avatar_path),
-        },
-      })),
-    [rows, urls],
+      rows
+        .filter((r) => !hiddenIds.has(r.item_id))
+        .map<FeedItem>((r) => {
+          const trip: FeedTrip = {
+            id: r.trip_id,
+            ownerId: r.owner_id,
+            title: r.title,
+            coverPath: r.cover_path || null,
+            coverUrl: r.cover_path ? (urls[r.cover_path] ?? null) : null,
+            stopCount: r.stop_count,
+            // Trip time, so a repost card's embedded trip shows when the trip was posted.
+            createdAt: r.trip_created_at,
+            author: {
+              username: r.username,
+              displayName: r.display_name,
+              avatarUrl: getAvatarUrl(r.avatar_path),
+            },
+          };
+          if (r.item_type === 'repost' && r.reposter_id) {
+            return {
+              kind: 'repost',
+              key: `repost:${r.item_id}`,
+              repostId: r.item_id,
+              caption: r.repost_caption,
+              createdAt: r.created_at,
+              reposter: {
+                id: r.reposter_id,
+                username: r.reposter_username ?? '',
+                displayName: r.reposter_display_name ?? 'Traveller',
+                avatarUrl: getAvatarUrl(r.reposter_avatar_path),
+              },
+              trip,
+            };
+          }
+          return { kind: 'trip', key: `trip:${r.trip_id}`, trip };
+        }),
+    [rows, urls, hiddenIds],
   );
 
   return {

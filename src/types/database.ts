@@ -123,6 +123,228 @@ export type Database = {
           },
         ]
       }
+      comment_likes: {
+        Row: {
+          comment_id: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_likes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "trip_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reposts: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          trip_id: string
+          user_id: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          trip_id: string
+          user_id: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          trip_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reposts_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reposts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_comments: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          like_count: number
+          parent_id: string | null
+          reply_count: number
+          trip_id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          like_count?: number
+          parent_id?: string | null
+          reply_count?: number
+          trip_id: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          like_count?: number
+          parent_id?: string | null
+          reply_count?: number
+          trip_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_comments_parent_fk"
+            columns: ["parent_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "trip_comments"
+            referencedColumns: ["id", "trip_id"]
+          },
+          {
+            foreignKeyName: "trip_comments_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_likes: {
+        Row: {
+          created_at: string
+          trip_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          trip_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          trip_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_likes_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_saves: {
+        Row: {
+          created_at: string
+          trip_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          trip_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          trip_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_saves_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_saves_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_social_counts: {
+        Row: {
+          comment_count: number
+          like_count: number
+          repost_count: number
+          trip_id: string
+        }
+        Insert: {
+          comment_count?: number
+          like_count?: number
+          repost_count?: number
+          trip_id: string
+        }
+        Update: {
+          comment_count?: number
+          like_count?: number
+          repost_count?: number
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_social_counts_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: true
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       route_requests: {
         Row: {
           id: number
@@ -263,16 +485,169 @@ export type Database = {
         }
         Returns: {
           avatar_path: string
-          cover_path: string
+          comment_count: number
+          cover_path: string | null
           created_at: string
-          description: string
+          description: string | null
           display_name: string
+          item_id: string
+          item_type: "trip" | "repost"
+          like_count: number
+          liked_by_me: boolean
           owner_id: string
+          repost_caption: string | null
+          repost_count: number
+          reposted_by_me: boolean
+          reposter_avatar_path: string | null
+          reposter_display_name: string | null
+          reposter_id: string | null
+          reposter_username: string | null
+          saved_by_me: boolean
           stop_count: number
           title: string
+          trip_created_at: string
           trip_id: string
           username: string
         }[]
+      }
+      get_trip_social: {
+        Args: { p_trip_id: string }
+        Returns: {
+          can_repost: boolean
+          comment_count: number
+          like_count: number
+          liked_by_me: boolean
+          owner_id: string
+          repost_count: number
+          reposted_by_me: boolean
+          saved_by_me: boolean
+          trip_id: string
+        }[]
+      }
+      get_comments: {
+        Args: {
+          p_trip_id: string
+          p_before_created_at?: string
+          p_before_id?: string
+          p_limit?: number
+        }
+        Returns: {
+          avatar_path: string
+          body: string
+          can_delete: boolean
+          comment_id: string
+          created_at: string
+          display_name: string
+          like_count: number
+          liked_by_me: boolean
+          parent_id: string | null
+          reply_count: number
+          user_id: string
+          username: string
+        }[]
+      }
+      get_replies: {
+        Args: {
+          p_comment_id: string
+          p_after_created_at?: string
+          p_after_id?: string
+          p_limit?: number
+        }
+        Returns: {
+          avatar_path: string
+          body: string
+          can_delete: boolean
+          comment_id: string
+          created_at: string
+          display_name: string
+          like_count: number
+          liked_by_me: boolean
+          parent_id: string | null
+          reply_count: number
+          user_id: string
+          username: string
+        }[]
+      }
+      get_saved_trips: {
+        Args: {
+          p_before_created_at?: string
+          p_before_id?: string
+          p_limit?: number
+        }
+        Returns: {
+          avatar_path: string
+          comment_count: number
+          cover_path: string | null
+          created_at: string
+          description: string | null
+          display_name: string
+          like_count: number
+          liked_by_me: boolean
+          owner_id: string
+          repost_count: number
+          stop_count: number
+          title: string
+          trip_created_at: string
+          trip_id: string
+          username: string
+        }[]
+      }
+      get_trip_likers: {
+        Args: {
+          p_trip_id: string
+          p_before_created_at?: string
+          p_before_id?: string
+          p_limit?: number
+        }
+        Returns: {
+          avatar_path: string | null
+          created_at: string
+          display_name: string
+          user_id: string
+          username: string
+        }[]
+      }
+      set_trip_like: {
+        Args: { p_trip_id: string; p_liked: boolean }
+        Returns: { liked: boolean; like_count: number }[]
+      }
+      set_trip_save: {
+        Args: { p_trip_id: string; p_saved: boolean }
+        Returns: { saved: boolean }[]
+      }
+      set_comment_like: {
+        Args: { p_comment_id: string; p_liked: boolean }
+        Returns: { liked: boolean; like_count: number }[]
+      }
+      create_comment: {
+        Args: { p_trip_id: string; p_parent_id: string | null; p_body: string }
+        Returns: {
+          avatar_path: string
+          body: string
+          can_delete: boolean
+          comment_count: number
+          comment_id: string
+          created_at: string
+          display_name: string
+          like_count: number
+          liked_by_me: boolean
+          parent_id: string | null
+          reply_count: number
+          user_id: string
+          username: string
+        }[]
+      }
+      delete_comment: {
+        Args: { p_comment_id: string }
+        Returns: number
+      }
+      create_repost: {
+        Args: { p_trip_id: string; p_caption?: string | null }
+        Returns: { repost_count: number; repost_id: string }[]
+      }
+      delete_repost: {
+        Args: { p_repost_id: string }
+        Returns: { repost_count: number; trip_id: string }[]
       }
       claim_route_request: {
         Args: { p_trip_id: string }

@@ -33,7 +33,13 @@ export type IconName =
   | 'camera'
   | 'car'
   | 'walk'
-  | 'bike';
+  | 'bike'
+  | 'heart'
+  | 'comment'
+  | 'share'
+  | 'bookmark'
+  | 'repost'
+  | 'reply';
 
 type SymbolName = Exclude<ComponentProps<typeof SymbolView>['name'], string>;
 
@@ -75,22 +81,36 @@ const ICONS: Record<IconName, Required<SymbolName>> = {
   car: { ios: 'car', android: 'directions_car', web: 'directions_car' },
   walk: { ios: 'figure.walk', android: 'directions_walk', web: 'directions_walk' },
   bike: { ios: 'bicycle', android: 'directions_bike', web: 'directions_bike' },
+  heart: { ios: 'heart', android: 'favorite_border', web: 'favorite_border' },
+  comment: { ios: 'bubble.left', android: 'chat_bubble_outline', web: 'chat_bubble_outline' },
+  share: { ios: 'square.and.arrow.up', android: 'share', web: 'share' },
+  bookmark: { ios: 'bookmark', android: 'bookmark_border', web: 'bookmark_border' },
+  repost: { ios: 'arrow.2.squarepath', android: 'repeat', web: 'repeat' },
+  reply: { ios: 'arrowshape.turn.up.left', android: 'reply', web: 'reply' },
+};
+
+/** Filled variants. In Material Symbols the bare name is the filled glyph. */
+const FILLED: Partial<Record<IconName, Required<SymbolName>>> = {
+  heart: { ios: 'heart.fill', android: 'favorite', web: 'favorite' },
+  bookmark: { ios: 'bookmark.fill', android: 'bookmark', web: 'bookmark' },
 };
 
 export type IconProps = {
   name: IconName;
   size?: number;
   color?: ThemeColor | (string & {});
+  /** Filled glyph for `heart` and `bookmark`; other icons ignore it. */
+  filled?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
-export function Icon({ name, size = Layout.iconSize.lg, color = 'text', style }: IconProps) {
+export function Icon({ name, size = Layout.iconSize.lg, color = 'text', filled = false, style }: IconProps) {
   const theme = useTheme();
   const tint = color in Colors.light ? theme[color as ThemeColor] : color;
 
   return (
     <SymbolView
-      name={ICONS[name]}
+      name={(filled && FILLED[name]) || ICONS[name]}
       size={size}
       tintColor={tint}
       accessible={false}
