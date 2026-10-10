@@ -43,8 +43,8 @@
         { "name": "Wentworth Falls Lookout", "lat": -33.72521, "lng": 150.36953, "notes": "A short walk leads to views over the falls and the Jamison Valley. Good first stop to stretch your legs.", "geocode_query": "Wentworth Falls Picnic Area" },
         { "name": "Leura Village", "lat": -33.71512, "lng": 150.33009, "notes": "A charming main street with cafes, bookshops and galleries. Great for a late breakfast or lunch.", "geocode_query": "Leura Mall, Leura" },
         { "name": "Echo Point and the Three Sisters", "lat": -33.73119, "lng": 150.31184, "notes": "The iconic lookout over the three sandstone peaks. Visit early in the day for fewer crowds.", "geocode_query": "Echo Point Lookout, Katoomba" },
-        { "name": "Scenic World Katoomba", "lat": -33.72899, "lng": 150.30055, "notes": "Ride the cable car and railway into the rainforest valley. Check the operator's current schedule before you go.", "geocode_query": "Scenic World, Katoomba" },
-        { "name": "Govetts Leap Lookout", "lat": -33.62793, "lng": 150.31152, "notes": "A broad lookout near Blackheath with views of the Grose Valley and a long waterfall drop.", "geocode_query": "Govetts Leap Lookout, Blackheath" }
+        { "name": "Scenic World Katoomba", "lat": -33.72910, "lng": 150.30053, "notes": "Ride the cable car and railway into the rainforest valley. Check the operator's current schedule before you go.", "geocode_query": "Scenic World, Katoomba" },
+        { "name": "Govetts Leap Lookout", "lat": -33.62996, "lng": 150.31108, "notes": "A broad lookout near Blackheath with views of the Grose Valley and a long waterfall drop. Park on Govetts Leap Road and walk the last few minutes.", "geocode_query": "Govetts Leap Lookout, Blackheath" }
       ]
     },
     {

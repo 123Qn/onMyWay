@@ -37,6 +37,28 @@ Requirements: Node 20+, `npm install` already run in the repo. No extra dependen
      Leave it running.
    - Prints a summary table (trip id, route status, distance).
 
+## Node 20 and WebSocket
+
+`supabase-js` needs a global `WebSocket`, which Node 20 lacks. Run every subcommand that signs in
+(`seed`, `attach-stop-photos`) as `node --experimental-websocket scripts/seed-official/seed.mjs <cmd>`.
+Node 22+ does not need the flag. `verify`, `fetch-covers` and `fetch-stop-photos` never sign in, so they work without it.
+
+## Stop photos
+
+1. `node scripts/seed-official/seed.mjs fetch-stop-photos [--only <slug>]`
+   - For each stop, queries Openverse with the stop's optional `photo_query` field in `trips.json`, else `"<stop name> <region>"`
+     (shorter queries are tried when too few results). `license_type=commercial`, and any ND or NC licence is excluded.
+   - Saves up to 3 candidates to `covers/<slug>/stops/<NN>/1.jpg..3.jpg` (NN = 01-based stop number) plus `credits.json`.
+     HTTPS only, 8 MB cap, about 1 request per second. Many stops will have 0 candidates; that is fine.
+2. Look at the candidates and **copy** (do not rename) the best one to `covers/<slug>/stops/<NN>/photo.jpg`. No `photo.jpg` = no photo for that stop.
+3. `node scripts/seed-official/seed.mjs attach-stop-photos --dry-run [--only <slug>]` validates the local files (JPEG, size, SHA-256 match to `credits.json`, licence). No network.
+4. `node --experimental-websocket scripts/seed-official/seed.mjs attach-stop-photos [--only <slug>]`
+   - Signs in, finds each trip by title (run `seed` first), uploads the photo to `{uid}/{tripId}/{uuid}.jpg` in bucket `trip-photos`
+     and calls `save_trip_stops` once per trip with the existing stop ids, order, coordinates, address and photos plus the new photo.
+     Coordinates and order are unchanged, so the stored route signature stays valid; the summary shows the route status to confirm.
+   - Appends `Photo: <title> by <creator>, <license>` to the stop notes (title shortened if notes would exceed 5000 chars).
+   - Idempotent: a stop that already has a photo is skipped, the credit is never duplicated. Max 5 photos per stop.
+
 ## Flags and re-runs
 
 - `--only <slug>` works with all subcommands (for example `seed --only hoi-an-ancient-town-walk`).

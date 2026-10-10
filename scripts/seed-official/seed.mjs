@@ -174,14 +174,17 @@ function coverDir(slug) {
   return dir;
 }
 
-async function download(url, file) {
+async function download(url, file, maxBytes) {
   if (!String(url).toLowerCase().startsWith('https://')) throw new Error('refusing non-https URL');
   const res = await fetch(url, { headers: { 'User-Agent': 'onMyWay-seed/1.0' }, redirect: 'follow' });
   if (!res.url.startsWith('https://')) throw new Error('refusing non-https redirect');
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const type = res.headers.get('content-type') ?? '';
   if (!type.includes('jpeg') && !type.includes('jpg')) throw new Error(`not a JPEG (${type})`);
+  // Optional size cap (used by fetch-stop-photos): check the header first, then the real size.
+  if (maxBytes && Number(res.headers.get('content-length') ?? 0) > maxBytes) throw new Error('over size limit');
   const buf = Buffer.from(await res.arrayBuffer());
+  if (maxBytes && buf.length > maxBytes) throw new Error('over size limit');
   writeFileSync(file, buf);
   return buf.length;
 }
@@ -446,7 +449,272 @@ async function seed() {
   console.log('Trips whose route is "error" can be retried later with: seed --routes-only');
 }
 
+// ---------------------------------------------------------------- stop photos
+const MAX_PHOTOS_PER_STOP = 5; // src/lib/trip-form.ts
+const STOP_PHOTO_MAX_BYTES = 8 * 1024 * 1024; // bucket limit is 10 MB
+
+/** covers/<slug>/stops/<NN>/ (NN = 1-based, zero padded); throws unless the resolved path stays inside covers/. */
+function stopDir(slug, index) {
+  if (!Number.isInteger(index) || index < 0 || index >= MAX_STOPS) throw new Error(`bad stop index: ${index}`);
+  const root = resolve(COVERS);
+  const dir = resolve(coverDir(slug), 'stops', String(index + 1).padStart(2, '0'));
+  if (!dir.startsWith(root + sep)) throw new Error(`stop dir escapes covers/: ${slug}/${index}`);
+  return dir;
+}
+
+/** ND and NC licences are never used (derivatives are cropped/resized; the account is commercial). */
+function licenceAllowed(l) {
+  const parts = String(l ?? '').toLowerCase().split('-');
+  return parts.length > 0 && l && !parts.includes('nd') && !parts.includes('nc');
+}
+
+async function fetchStopPhotos() {
+  for (const t of trips) coverDir(t.slug);
+  let lastReq = 0;
+  const politely = async () => {
+    const wait = 1100 - (Date.now() - lastReq);
+    if (wait > 0) await sleep(wait);
+    lastReq = Date.now();
+  };
+  let withCandidates = 0;
+  let total = 0;
+  for (const t of trips) {
+    const region = (REGIONS[t.slug] ?? '').replace(/,/g, '');
+    for (const [i, s] of t.stops.entries()) {
+      total += 1;
+      const dir = stopDir(t.slug, i);
+      mkdirSync(dir, { recursive: true });
+      const base = (s.photo_query ?? `${s.name} ${region}`).trim();
+      const words = base.split(/\s+/);
+      const queries = [...new Set([words.length, 4, 3, 2].filter((n) => n <= words.length && n >= 1).map((n) => words.slice(0, n).join(' ')))];
+      const results = [];
+      const seen = new Set();
+      for (const q of queries) {
+        if (results.length >= 3) break;
+        try {
+          await politely();
+          const api = `https://api.openverse.org/v1/images/?q=${encodeURIComponent(q)}&license_type=commercial&page_size=10`;
+          const res = await fetch(api, { headers: { 'User-Agent': 'onMyWay-seed/1.0', Accept: 'application/json' } });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          for (const r of (await res.json()).results ?? []) {
+            if (!seen.has(r.id) && licenceAllowed(r.license)) {
+              seen.add(r.id);
+              results.push(r);
+            }
+          }
+        } catch (e) {
+          console.log(`${t.slug} #${i + 1}: search "${q}" failed (${e.message})`);
+        }
+      }
+      const credits = [];
+      for (const r of results) {
+        if (credits.length >= 3) break;
+        const file = `${credits.length + 1}.jpg`;
+        let size = null;
+        let variant = 'original';
+        try {
+          await politely();
+          size = await download(r.url, join(dir, file), STOP_PHOTO_MAX_BYTES);
+        } catch {
+          try {
+            variant = 'thumbnail';
+            await politely();
+            size = await download(r.thumbnail, join(dir, file), STOP_PHOTO_MAX_BYTES);
+          } catch (e) {
+            console.log(`  skip "${r.title}": ${e.message}`);
+            continue;
+          }
+        }
+        credits.push({
+          file,
+          variant,
+          bytes: size,
+          title: r.title || 'Untitled',
+          creator: r.creator || 'Unknown',
+          license: `${String(r.license ?? '').toUpperCase()}${r.license_version ? ` ${r.license_version}` : ''}`.trim(),
+          license_url: r.license_url ?? null,
+          source_url: r.foreign_landing_url ?? r.url,
+          image_url: r.url,
+        });
+      }
+      writeFileSync(join(dir, 'credits.json'), JSON.stringify(credits, null, 2));
+      if (credits.length) withCandidates += 1;
+      console.log(`${t.slug} #${String(i + 1).padStart(2, '0')} ${s.name.slice(0, 30)}: ${credits.length} candidate(s)`);
+    }
+  }
+  console.log(`\n${withCandidates}/${total} stops have at least one candidate.`);
+}
+
+function cleanCreditPart(v, max) {
+  const s = String(v ?? '').replace(/\s+/g, ' ').trim();
+  return s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s;
+}
+
+/** Local-only check of covers/<slug>/stops/<NN>/photo.jpg. Returns { none } | { error } | { bytes, credit }. */
+function loadStopPhoto(slug, index) {
+  const dir = stopDir(slug, index);
+  const file = join(dir, 'photo.jpg');
+  if (!existsSync(file)) return { none: true };
+  const bytes = readFileSync(file);
+  if (bytes.length === 0 || bytes.length > STOP_PHOTO_MAX_BYTES) return { error: `photo.jpg size ${bytes.length} out of range` };
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8) return { error: 'photo.jpg is not a JPEG' };
+  let credits;
+  try {
+    credits = JSON.parse(readFileSync(join(dir, 'credits.json'), 'utf8'));
+  } catch {
+    return { error: 'credits.json missing' };
+  }
+  const hash = sha(bytes);
+  const match = credits.find((c) => /^[1-3]\.jpg$/.test(c.file) && existsSync(join(dir, c.file)) && sha(readFileSync(join(dir, c.file))) === hash);
+  if (!match) return { error: 'photo.jpg matches no candidate: COPY (do not rename) the chosen N.jpg to photo.jpg' };
+  if (!licenceAllowed(String(match.license).split(' ')[0])) return { error: `licence ${match.license} not allowed` };
+  return { bytes, match };
+}
+
+/** "Photo: <title> by <creator>, <license>" with the title shortened if needed so notes stay within TEXT_MAX. */
+function buildStopCredit(match, notes) {
+  const make = (tmax) =>
+    `Photo: ${cleanCreditPart(match.title, tmax)} by ${cleanCreditPart(match.creator, 60)}, ${cleanCreditPart(match.license, 30)}`;
+  for (const tmax of [100, 50, 20]) {
+    const credit = make(tmax);
+    const out = normalizeText(notes ? `${notes}\n\n${credit}` : credit);
+    if (out && out.length <= TEXT_MAX) return { credit, notes: out };
+  }
+  return null;
+}
+
+async function attachStopPhotos() {
+  const dry = flag('--dry-run');
+  // Offline validation first (always): files, hashes, licences, limits.
+  const plans = trips.map((t) => {
+    const problems = validateTrip(t);
+    const stops = t.stops.map((s, i) => {
+      try {
+        return { photo: loadStopPhoto(t.slug, i) };
+      } catch (e) {
+        return { photo: { error: e.message } };
+      }
+    });
+    stops.forEach((s, i) => s.photo.error && problems.push(`stop ${i + 1}: ${s.photo.error}`));
+    return { t, stops, problems };
+  });
+  for (const p of plans) {
+    const n = p.stops.filter((s) => s.photo.bytes).length;
+    console.log(`${dry ? '[dry-run] ' : ''}${p.t.slug}: ${p.problems.length ? `NOT READY - ${p.problems.join('; ')}` : 'ready'} (${n}/${p.t.stops.length} stops with photo.jpg)`);
+  }
+  if (dry) return;
+  const bad = plans.filter((p) => p.problems.length);
+  if (bad.length) fail('Fix the problems above (or use --only <slug>).');
+
+  const { createClient } = await import('@supabase/supabase-js');
+  const url = env('EXPO_PUBLIC_SUPABASE_URL');
+  const anon = env('EXPO_PUBLIC_SUPABASE_ANON_KEY');
+  const email = env('SEED_EMAIL');
+  const password = env('SEED_PASSWORD');
+  if (!url || !anon) fail('EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY missing in root .env');
+  if (!email || !password) fail('SEED_EMAIL / SEED_PASSWORD missing in scripts/seed-official/.env');
+  const supabase = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: true } });
+  const { data: auth, error: authErr } = await supabase.auth.signInWithPassword({ email, password });
+  if (authErr || !auth.user) fail(`sign-in failed: ${authErr?.message}`);
+  const userId = auth.user.id;
+
+  const summary = [];
+  for (const { t, stops: local } of plans) {
+    console.log(`\n== ${t.slug}`);
+    if (!local.some((s) => s.photo.bytes)) {
+      console.log('  no photo.jpg files, skipped');
+      summary.push({ slug: t.slug, result: 'no photos chosen' });
+      continue;
+    }
+    const { data: found, error: exErr } = await supabase
+      .from('trips')
+      .select('id')
+      .eq('owner_id', userId)
+      .eq('title', t.title.trim())
+      .limit(1);
+    const tripId = found?.[0]?.id;
+    if (exErr || !tripId) {
+      console.log(`  trip not found (${exErr?.message ?? 'run seed first'})`);
+      summary.push({ slug: t.slug, result: 'trip missing' });
+      continue;
+    }
+    const { data: rows, error: stErr } = await supabase
+      .from('stops')
+      .select('id, position, name, lat, lng, address, notes, stop_photos(id, position, storage_path)')
+      .eq('trip_id', tripId)
+      .order('position', { ascending: true });
+    if (stErr || !rows || rows.length !== t.stops.length) {
+      console.log(`  stops lookup failed or count differs (${stErr?.message ?? `${rows?.length} vs ${t.stops.length}`}), skipped`);
+      summary.push({ slug: t.slug, result: 'stops mismatch' });
+      continue;
+    }
+    // Rebuild the FULL stop list from the server rows so nothing else changes (ids, order, coords, address).
+    const uploaded = [];
+    let attached = 0;
+    let already = 0;
+    let failed = false;
+    const payload = [];
+    for (const [i, row] of rows.entries()) {
+      const photos = [...(row.stop_photos ?? [])]
+        .sort((a, b) => a.position - b.position)
+        .map((p) => ({ id: p.id, storage_path: p.storage_path }));
+      let notes = row.notes;
+      const ph = local[i].photo;
+      if (ph.bytes) {
+        if (photos.length > 0) {
+          already += 1; // idempotent: a stop that already has a photo is left alone
+        } else if (photos.length + 1 > MAX_PHOTOS_PER_STOP) {
+          console.log(`  stop ${i + 1}: photo limit reached`);
+        } else {
+          const built = buildStopCredit(ph.match, row.notes);
+          if (!built) {
+            console.log(`  stop ${i + 1}: no room for the credit in notes, skipped`);
+          } else {
+            const photoId = randomUUID();
+            const path = `${userId}/${tripId}/${photoId}.jpg`; // tripFilePath()
+            const up = await supabase.storage.from(BUCKET).upload(path, ph.bytes, { contentType: 'image/jpeg', upsert: false });
+            if (up.error) {
+              console.error(`  stop ${i + 1}: upload failed: ${up.error.message}`);
+              failed = true;
+              break;
+            }
+            uploaded.push(path);
+            photos.push({ id: photoId, storage_path: path });
+            if (!(row.notes ?? '').includes(built.credit)) notes = built.notes;
+            attached += 1;
+          }
+        }
+      }
+      payload.push({ id: row.id, name: row.name, lat: row.lat, lng: row.lng, address: row.address, notes, photos });
+    }
+    if (failed || attached === 0) {
+      if (uploaded.length) await supabase.storage.from(BUCKET).remove(uploaded);
+      summary.push({ slug: t.slug, result: failed ? 'upload failed' : `nothing to do (${already} already had photos)` });
+      continue;
+    }
+    const rpc = await supabase.rpc('save_trip_stops', { p_trip_id: tripId, p_stops: payload });
+    if (rpc.error) {
+      console.error(`  save_trip_stops failed: ${rpc.error.message}`);
+      await supabase.storage.from(BUCKET).remove(uploaded);
+      summary.push({ slug: t.slug, result: 'rpc failed' });
+      continue;
+    }
+    // Same coords and order => same signature => the stored route stays fresh. Verify it.
+    const { data: r } = await supabase.rpc('get_trip_route', { p_trip_id: tripId });
+    const route = Array.isArray(r) ? r[0] : r;
+    summary.push({
+      slug: t.slug,
+      result: `attached ${attached}, already ${already}`,
+      route: route ? (route.is_fresh ? route.route_status : 'STALE (run seed --routes-only)') : '-',
+    });
+  }
+  console.log('\n== Summary');
+  console.table(summary);
+}
+
 if (cmd === 'verify') await verify();
 else if (cmd === 'fetch-covers') await fetchCovers();
+else if (cmd === 'fetch-stop-photos') await fetchStopPhotos();
+else if (cmd === 'attach-stop-photos') await attachStopPhotos();
 else if (cmd === 'seed') await seed();
-else fail('Usage: node scripts/seed-official/seed.mjs <verify|fetch-covers|seed> [--only <slug>] [--dry-run] [--routes-only]');
+else fail('Usage: node --experimental-websocket scripts/seed-official/seed.mjs <verify|fetch-covers|fetch-stop-photos|attach-stop-photos|seed> [--only <slug>] [--dry-run] [--routes-only]');
