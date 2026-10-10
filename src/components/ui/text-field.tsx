@@ -83,7 +83,9 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
         </ThemedText>
       </Pressable>
 
+      {/* collapsable={false}: opacity toggles with `editable`; without it Fabric reparents the EditText. */}
       <View
+        collapsable={false}
         style={[
           styles.inputRow,
           {

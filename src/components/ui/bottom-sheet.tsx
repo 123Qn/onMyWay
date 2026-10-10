@@ -1,4 +1,4 @@
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from './button';
@@ -33,6 +33,10 @@ const ROW_HEIGHT = 56;
 export function BottomSheet({ visible, onClose, rows, title }: BottomSheetProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  // Inside an Android edge-to-edge Modal the bottom inset can read 0, so keep a minimum that
+  // clears a 3-button nav bar (~48dp).
+  const bottomPadding =
+    Math.max(insets.bottom, 0) + Spacing.three + (Platform.OS === 'android' && insets.bottom === 0 ? Spacing.four + 16 : 0);
 
   return (
     <Modal
@@ -56,7 +60,7 @@ export function BottomSheet({ visible, onClose, rows, title }: BottomSheetProps)
           accessibilityLabel={title}
           style={[
             styles.sheet,
-            { backgroundColor: theme.surface, paddingBottom: Math.max(insets.bottom, Spacing.three) },
+            { backgroundColor: theme.surface, paddingBottom: bottomPadding },
           ]}>
           <View
             collapsable={false}
