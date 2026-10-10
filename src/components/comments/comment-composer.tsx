@@ -43,6 +43,7 @@ export function CommentComposer({
   const insets = useSafeAreaInsets();
   const [focused, setFocused] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [contentHeight, setContentHeight] = useState(0);
   const canSend = value.trim().length > 0 && !disabled;
 
   // Keyboard open: the keyboard already clears the nav bar, so only a small gap (no double inset).
@@ -54,6 +55,14 @@ export function CommentComposer({
       hide.remove();
     };
   }, []);
+
+  // Explicit height: Android multiline inputs do not shrink after the text is cleared (sent
+  // comment/reply), which left a blank band above the input. Empty text always resets to minimum.
+  const maxInput = LINE * MAX_LINES + Spacing.three;
+  const inputHeight =
+    value.length === 0
+      ? Layout.minTouchTarget
+      : Math.min(maxInput, Math.max(Layout.minTouchTarget, contentHeight));
 
   const bottomPadding = keyboardOpen ? Spacing.two : insets.bottom + Spacing.two;
 
@@ -103,7 +112,8 @@ export function CommentComposer({
             accessibilityHint="Maximum 500 characters"
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
-            style={[styles.input, { color: theme.text }]}
+            onContentSizeChange={(e) => setContentHeight(e.nativeEvent.contentSize.height)}
+            style={[styles.input, { color: theme.text, height: inputHeight }]}
           />
         </View>
         <Pressable

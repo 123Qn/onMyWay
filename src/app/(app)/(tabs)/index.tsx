@@ -95,7 +95,7 @@ export default function FeedScreen() {
     );
   }
 
-  const openComments = (tripId: string) => router.push(`/trip/${tripId}/comments`);
+  const openComments = (tripId: string) => router.push(`/trip/${tripId}/comments?focus=composer`);
 
   const renderFeedItem = (item: FeedItem) => {
     const trip = item.trip;

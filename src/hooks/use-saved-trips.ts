@@ -8,6 +8,7 @@ import { getAvatarUrl } from '@/lib/avatar-url';
 import { fetchSavedTrips, type SavedTripRow } from '@/lib/social-api';
 import { getSaveVersion, seedTripSocial, useSaveVersion } from '@/lib/social-store';
 import { subscribeTripEvents } from '@/lib/trip-events';
+import { useSession } from '@/providers/session-provider';
 
 const PAGE_SIZE = 20;
 
@@ -54,6 +55,7 @@ export function useSavedTrips({ enabled }: Options): SavedTrips {
   // Save version of the last first-page load; null = never loaded.
   const loadedVersionRef = useRef<number | null>(null);
   const saveVersion = useSaveVersion();
+  const { profile } = useSession();
 
   const loadFirst = useCallback((mode: 'initial' | 'refresh') => {
     const request = ++requestRef.current;
@@ -99,6 +101,21 @@ export function useSavedTrips({ enabled }: Options): SavedTrips {
       }
     }, [saveVersion, loadFirst]),
   );
+
+  // Own profile edits (name, username, avatar) refresh author fields on my own saved trips.
+  // loadFirst bumps the request counter, so older in-flight pages are ignored.
+  const profileSig = profile
+    ? `${profile.id}|${profile.display_name}|${profile.username}|${profile.avatar_path ?? ''}`
+    : null;
+  const profileSigRef = useRef(profileSig);
+  useEffect(() => {
+    const prev = profileSigRef.current;
+    profileSigRef.current = profileSig;
+    if (!prev || !profileSig || prev === profileSig) return;
+    if (prev.split('|')[0] !== profileSig.split('|')[0]) return;
+    if (!enabled || loadedVersionRef.current === null) return;
+    void loadFirst('refresh');
+  }, [profileSig, enabled, loadFirst]);
 
   useEffect(
     () =>

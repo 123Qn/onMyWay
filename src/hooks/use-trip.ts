@@ -175,6 +175,23 @@ export function useTrip(id: string): TripState {
     [id, apply],
   );
 
+  // Own profile edits (name, username, avatar): re-read so the author block is fresh. The shared
+  // request counter makes any older in-flight response lose to this one.
+  const profileSig = profile
+    ? `${profile.id}|${profile.display_name}|${profile.username}|${profile.avatar_path ?? ''}`
+    : null;
+  const profileSigRef = useRef(profileSig);
+  useEffect(() => {
+    const prev = profileSigRef.current;
+    profileSigRef.current = profileSig;
+    // Skip the first value and sign-in/out; only edits of the same user on a loaded trip.
+    if (!prev || !profileSig || prev === profileSig) return;
+    if (prev.split('|')[0] !== profileSig.split('|')[0]) return;
+    if (!tripRef.current) return;
+    const request = ++requestRef.current;
+    fetchTrip(id).then((result) => apply(request, 'refresh', result));
+  }, [profileSig, id, apply]);
+
   const refresh = useCallback(async () => {
     setRefreshing(true);
     const request = ++requestRef.current;

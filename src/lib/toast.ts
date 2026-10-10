@@ -43,6 +43,15 @@ export function showToast(message: string, throttleMs = 0): void {
   }, DURATION_MS);
 }
 
+/** Hides the current toast early, but only if it still shows `message`. */
+export function dismissToast(message: string): void {
+  if (!state || state.message !== message) return;
+  if (timer) clearTimeout(timer);
+  timer = null;
+  state = null;
+  emit();
+}
+
 // Which host renders: the most recently mounted one (a modal covers the layout-level host).
 const hosts: number[] = [];
 const hostListeners = new Set<() => void>();

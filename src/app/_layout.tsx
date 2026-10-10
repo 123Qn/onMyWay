@@ -3,23 +3,51 @@ import { PlusJakartaSans_500Medium } from '@expo-google-fonts/plus-jakarta-sans/
 import { PlusJakartaSans_600SemiBold } from '@expo-google-fonts/plus-jakarta-sans/600SemiBold';
 import { PlusJakartaSans_700Bold } from '@expo-google-fonts/plus-jakarta-sans/700Bold';
 import { useFonts } from 'expo-font';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import * as Linking from 'expo-linking';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { ProfileLoadError } from '@/components/profile-load-error';
 import { useTheme } from '@/hooks/use-theme';
+import { consumePendingLink, setPendingLink } from '@/lib/pending-link';
 import { SessionProvider, needsUsername, useSession } from '@/providers/session-provider';
 
 SplashScreen.preventAutoHideAsync();
 
 function RootStack({ fontsReady }: { fontsReady: boolean }) {
   const { session, profile, isLoading, profileError } = useSession();
+
+  const ready = !!session && !!profile;
+  const onboarding = ready && needsUsername(profile);
+  const appOpen = ready && !onboarding;
+
+  // A deep link opened while signed out would be dropped by the guards. Remember it (validated
+  // to /trip/<uuid> only) and open it once after sign-in. Each distinct URL is looked at once,
+  // so a stale URL is not re-captured after a later sign-out.
+  const url = Linking.useLinkingURL();
+  const seenUrlRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (isLoading || !url || url === seenUrlRef.current) return;
+    seenUrlRef.current = url;
+    if (!session) setPendingLink(url);
+  }, [url, session, isLoading]);
+
+  // Signed in and past onboarding: open the remembered link on top of the tabs, once. The timer
+  // lets the (app) navigator mount first.
+  useEffect(() => {
+    if (!appOpen) return;
+    const timer = setTimeout(() => {
+      const path = consumePendingLink();
+      if (path) router.push(path as never);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [appOpen]);
 
   // The native splash stays up until the session and the fonts are both settled. Only then is
   // AnimatedSplashOverlay mounted, and it is the single owner of SplashScreen.hideAsync()
@@ -34,9 +62,6 @@ function RootStack({ fontsReady }: { fontsReady: boolean }) {
       </>
     );
   }
-
-  const ready = !!session && !!profile;
-  const onboarding = ready && needsUsername(profile);
 
   return (
     <>

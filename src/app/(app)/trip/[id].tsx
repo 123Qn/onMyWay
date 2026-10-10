@@ -444,7 +444,7 @@ export default function TripDetailScreen() {
             <TripActionBar
               tripId={trip.id}
               showSave={!isOwner}
-              onOpenComments={() => router.push(`/trip/${trip.id}/comments`)}
+              onOpenComments={() => router.push(`/trip/${trip.id}/comments?focus=composer`)}
               onOpenShare={() => setShareOpen(true)}
             />
           ) : null}

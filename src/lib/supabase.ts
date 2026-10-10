@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 import { AppState, Platform } from 'react-native';
 
+import { trackedFetch } from '@/lib/connectivity';
 import type { Database } from '@/types/database';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -82,6 +83,8 @@ const secureStoreAdapter = {
 const isWeb = Platform.OS === 'web';
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  // Feeds the offline hint (src/lib/connectivity.ts).
+  global: { fetch: trackedFetch },
   auth: {
     // On web, fall back to supabase's default (localStorage).
     ...(isWeb ? {} : { storage: secureStoreAdapter }),

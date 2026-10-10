@@ -5,6 +5,7 @@ import {
   Alert,
   FlatList,
   InteractionManager,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
@@ -82,6 +83,24 @@ function CommentsBody() {
   const prefillRef = useRef('');
   const inputRef = useRef<TextInput | null>(null);
   const listRef = useRef<FlatList<CommentNode>>(null);
+  const kavRef = useRef<View>(null);
+  const [keyboardInset, setKeyboardInset] = useState(0);
+
+  // Android edge-to-edge: KeyboardAvoidingView does not move content in a modal, so measure how
+  // far the keyboard overlaps this container and pad the bottom by exactly that.
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const show = Keyboard.addListener('keyboardDidShow', (e) => {
+      kavRef.current?.measureInWindow((_x, y, _w, h) => {
+        setKeyboardInset(Math.max(0, Math.round(y + h - e.endCoordinates.screenY)));
+      });
+    });
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardInset(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
   useUnsavedGuard({
     shouldGuard: () => draftRef.current.trim().length > 0,
@@ -207,10 +226,12 @@ function CommentsBody() {
   return (
     <Screen edges={[...EDGES]} padded={false} keyboardAvoiding={false}>
       {header}
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior="padding"
-        keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}>
+      <View ref={kavRef} collapsable={false} style={styles.flex}>
+        <KeyboardAvoidingView
+          style={[styles.flex, { paddingBottom: keyboardInset }]}
+          enabled={Platform.OS === 'ios'}
+          behavior="padding"
+          keyboardVerticalOffset={headerHeight}>
         <FlatList
           ref={listRef}
           data={comments.top}
@@ -255,7 +276,8 @@ function CommentsBody() {
           inputRef={inputRef}
           disabled={!me}
         />
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </View>
       <BottomSheet
         visible={!!menuNode}
         onClose={() => setMenuNode(null)}
