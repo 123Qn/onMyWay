@@ -19,8 +19,8 @@ npx eas-cli@latest login          # or: npx eas-cli whoami
 npx eas-cli@latest init           # creates the EAS project, writes extra.eas.projectId / owner
 ```
 
-`init` adds the project ID to the app config. `app.config.ts` is dynamic, so if the CLI cannot
-write it, add the printed `extra.eas.projectId` (and `owner: 'quanh'`) manually and commit it.
+This is already done: `owner: 'quanh'` and `extra.eas.projectId` are set in `app.config.ts`, so
+`init` does not need to be run again (`app.config.ts` is dynamic, so the CLI cannot write it itself).
 The project ID is not a secret.
 
 ## 2. Environment variables

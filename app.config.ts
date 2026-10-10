@@ -22,6 +22,7 @@ if (!nominatimContactEmail) {
 const config: ExpoConfig = {
   name: 'onMyWay',
   slug: 'onMyWay',
+  owner: 'quanh',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
@@ -94,6 +95,7 @@ const config: ExpoConfig = {
   ],
   extra: {
     ...(nominatimContactEmail ? { nominatimContactEmail } : {}),
+    eas: { projectId: 'a970b427-c534-4f4e-828f-fd7432d93afd' },
   },
   experiments: {
     typedRoutes: true,
