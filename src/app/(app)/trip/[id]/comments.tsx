@@ -1,40 +1,48 @@
-import { Stack, router, useLocalSearchParams } from 'expo-router';
-import { useHeaderHeight } from 'expo-router/react-navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Stack,
+  router,
+  useLocalSearchParams,
+  useNavigation,
+  type NativeStackNavigationProp,
+} from "expo-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   FlatList,
-  InteractionManager,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
   RefreshControl,
   StyleSheet,
   TextInput,
   View,
-} from 'react-native';
+} from "react-native";
 
-import { Spinner } from '@/components/ui/spinner';
-import { CommentComposer } from '@/components/comments/comment-composer';
-import { CommentThread, type CommentActions } from '@/components/comments/comment-item';
-import { ThemedText } from '@/components/themed-text';
-import { BottomSheet } from '@/components/ui/bottom-sheet';
-import { Button } from '@/components/ui/button';
-import { EmptyState } from '@/components/ui/empty-state';
-import { ErrorBanner } from '@/components/ui/error-banner';
-import { Screen } from '@/components/ui/screen';
-import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
-import { ToastHost } from '@/components/ui/toast-host';
-import { Spacing } from '@/constants/theme';
-import { useComments, type CommentNode, type ReplyTarget } from '@/hooks/use-comments';
-import { useStackScreenOptions } from '@/hooks/use-stack-screen-options';
-import { useTheme } from '@/hooks/use-theme';
-import { useTripSocialInfo } from '@/hooks/use-trip-social-info';
-import { useUnsavedGuard } from '@/hooks/use-unsaved-guard';
-import { getAvatarUrl } from '@/lib/avatar-url';
-import { useSession } from '@/providers/session-provider';
+import { Spinner } from "@/components/ui/spinner";
+import { CommentComposer } from "@/components/comments/comment-composer";
+import {
+  CommentThread,
+  type CommentActions,
+} from "@/components/comments/comment-item";
+import { ThemedText } from "@/components/themed-text";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorBanner } from "@/components/ui/error-banner";
+import { Screen } from "@/components/ui/screen";
+import { Skeleton, SkeletonGroup } from "@/components/ui/skeleton";
+import { ToastHost } from "@/components/ui/toast-host";
+import { Spacing } from "@/constants/theme";
+import {
+  useComments,
+  type CommentNode,
+  type ReplyTarget,
+} from "@/hooks/use-comments";
+import { useStackScreenOptions } from "@/hooks/use-stack-screen-options";
+import { useTheme } from "@/hooks/use-theme";
+import { useTripSocialInfo } from "@/hooks/use-trip-social-info";
+import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
+import { getAvatarUrl } from "@/lib/avatar-url";
+import { useSession } from "@/providers/session-provider";
 
-const EDGES = ['left', 'right'] as const;
+const EDGES = ["left", "right"] as const;
 const SKELETONS = [0, 1, 2, 3];
 
 function CommentSkeletons() {
@@ -55,10 +63,10 @@ function CommentSkeletons() {
 
 function CommentsBody() {
   const params = useLocalSearchParams<{ id: string; focus?: string }>();
-  const id = String(params.id ?? '');
+  const id = String(params.id ?? "");
   const theme = useTheme();
   const stackOptions = useStackScreenOptions();
-  const headerHeight = useHeaderHeight();
+  const navigation = useNavigation<NativeStackNavigationProp<Record<string, object | undefined>>>();
   const { profile } = useSession();
   const info = useTripSocialInfo(id);
 
@@ -76,38 +84,20 @@ function CommentsBody() {
   );
   const comments = useComments(id, me);
 
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState("");
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
   const [menuNode, setMenuNode] = useState<CommentNode | null>(null);
-  const draftRef = useRef('');
-  const prefillRef = useRef('');
+  const draftRef = useRef("");
+  const prefillRef = useRef("");
   const inputRef = useRef<TextInput | null>(null);
   const listRef = useRef<FlatList<CommentNode>>(null);
-  const kavRef = useRef<View>(null);
-  const [keyboardInset, setKeyboardInset] = useState(0);
-
-  // Android edge-to-edge: KeyboardAvoidingView does not move content in a modal, so measure how
-  // far the keyboard overlaps this container and pad the bottom by exactly that.
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    const show = Keyboard.addListener('keyboardDidShow', (e) => {
-      kavRef.current?.measureInWindow((_x, y, _w, h) => {
-        setKeyboardInset(Math.max(0, Math.round(y + h - e.endCoordinates.screenY)));
-      });
-    });
-    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardInset(0));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
 
   useUnsavedGuard({
     shouldGuard: () => draftRef.current.trim().length > 0,
     onGuard: (proceed) => {
-      Alert.alert('Discard comment?', undefined, [
-        { text: 'Keep editing', style: 'cancel' },
-        { text: 'Discard', style: 'destructive', onPress: proceed },
+      Alert.alert("Discard comment?", undefined, [
+        { text: "Keep editing", style: "cancel" },
+        { text: "Discard", style: "destructive", onPress: proceed },
       ]);
     },
   });
@@ -118,16 +108,36 @@ function CommentsBody() {
   };
 
   // Opened from a "write a comment" entry: focus the input once the transition is done.
-  const focusOnOpen = params.focus === 'composer';
+  const focusOnOpen = params.focus === "composer";
   useEffect(() => {
     if (!focusOnOpen) return;
-    const handle = InteractionManager.runAfterInteractions(() => inputRef.current?.focus());
-    return () => handle.cancel();
-  }, [focusOnOpen]);
+    let done = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // Focus slightly after the transition so the input is attached and Android shows the keyboard.
+    const focusSoon = (delay: number) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      timer = setTimeout(() => inputRef.current?.focus(), delay);
+    };
+    const unsubscribe = navigation.addListener("transitionEnd", (e) => {
+      if (!e.data.closing) focusSoon(100);
+    });
+    // Fallback in case no transition event fires (e.g. screen already settled).
+    timer = setTimeout(() => focusSoon(0), 700);
+    return () => {
+      done = true;
+      clearTimeout(timer);
+      unsubscribe();
+    };
+  }, [focusOnOpen, navigation]);
 
   const startReply = (node: CommentNode) => {
     // A reply to a reply attaches to the top-level parent and mentions the replied user.
-    const target = { parentKey: node.parentKey ?? node.key, username: node.username };
+    const target = {
+      parentKey: node.parentKey ?? node.key,
+      username: node.username,
+    };
     const prefill = `@${node.username} `;
     setReplyTo(target);
     if (draftRef.current.trim().length === 0) {
@@ -139,17 +149,19 @@ function CommentsBody() {
 
   const cancelReply = () => {
     // Remove the prefilled mention only while it is still untouched.
-    if (prefillRef.current && draftRef.current === prefillRef.current) changeDraft('');
-    prefillRef.current = '';
+    if (prefillRef.current && draftRef.current === prefillRef.current)
+      changeDraft("");
+    prefillRef.current = "";
     setReplyTo(null);
   };
 
   const submit = () => {
     if (!draft.trim()) return;
     comments.send(draft, replyTo);
-    if (!replyTo) listRef.current?.scrollToOffset({ offset: 0, animated: true });
-    prefillRef.current = '';
-    changeDraft('');
+    if (!replyTo)
+      listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    prefillRef.current = "";
+    changeDraft("");
     setReplyTo(null);
   };
 
@@ -157,11 +169,15 @@ function CommentsBody() {
     const replies = node.parentKey ? 0 : node.replyCount;
     const message =
       replies > 0
-        ? `This also deletes its ${replies === 1 ? '1 reply' : `${replies} replies`}. This can't be undone.`
+        ? `This also deletes its ${replies === 1 ? "1 reply" : `${replies} replies`}. This can't be undone.`
         : "This can't be undone.";
-    Alert.alert('Delete comment?', message, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => comments.remove(node.key) },
+    Alert.alert("Delete comment?", message, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => comments.remove(node.key),
+      },
     ]);
   };
 
@@ -173,11 +189,13 @@ function CommentsBody() {
     onDiscard: (node) => comments.discard(node.key),
   };
 
-  const header = <Stack.Screen options={{ ...stackOptions, title: 'Comments' }} />;
+  const header = (
+    <Stack.Screen options={{ ...stackOptions, title: "Comments" }} />
+  );
 
-  if (info.status === 'unavailable' || comments.unavailable) {
+  if (info.status === "unavailable" || comments.unavailable) {
     return (
-      <Screen edges={[...EDGES, 'bottom']} centered>
+      <Screen edges={[...EDGES, "bottom"]} centered>
         {header}
         <EmptyState
           icon="lock"
@@ -190,15 +208,23 @@ function CommentsBody() {
   }
 
   let emptyNode;
-  if (comments.status === 'loading') {
+  if (comments.status === "loading") {
     emptyNode = <CommentSkeletons />;
-  } else if (comments.status === 'error') {
+  } else if (comments.status === "error") {
     emptyNode = (
-      <ErrorBanner message="Couldn't load comments." onRetry={comments.retry} style={styles.banner} />
+      <ErrorBanner
+        message="Couldn't load comments."
+        onRetry={comments.retry}
+        style={styles.banner}
+      />
     );
   } else {
     emptyNode = (
-      <EmptyState icon="comment" title="No comments yet" message="Start the conversation." />
+      <EmptyState
+        icon="comment"
+        title="No comments yet"
+        message="Start the conversation."
+      />
     );
   }
 
@@ -218,7 +244,12 @@ function CommentsBody() {
         <ThemedText type="caption" themeColor="textMuted">
           Couldn&apos;t load more comments.
         </ThemedText>
-        <Button title="Retry" variant="ghost" size="sm" onPress={comments.retryLoadMore} />
+        <Button
+          title="Retry"
+          variant="ghost"
+          size="sm"
+          onPress={comments.retryLoadMore}
+        />
       </View>
     );
   }
@@ -226,12 +257,7 @@ function CommentsBody() {
   return (
     <Screen edges={[...EDGES]} padded={false} keyboardAvoiding={false}>
       {header}
-      <View ref={kavRef} collapsable={false} style={styles.flex}>
-        <KeyboardAvoidingView
-          style={[styles.flex, { paddingBottom: keyboardInset }]}
-          enabled={Platform.OS === 'ios'}
-          behavior="padding"
-          keyboardVerticalOffset={headerHeight}>
+      <View collapsable={false} style={styles.flex}>
         <FlatList
           ref={listRef}
           data={comments.top}
@@ -272,11 +298,10 @@ function CommentsBody() {
           replyTo={replyTo}
           onCancelReply={cancelReply}
           avatarUrl={me?.avatarUrl ?? null}
-          displayName={me?.displayName ?? ''}
+          displayName={me?.displayName ?? ""}
           inputRef={inputRef}
           disabled={!me}
         />
-        </KeyboardAvoidingView>
       </View>
       <BottomSheet
         visible={!!menuNode}
@@ -284,9 +309,9 @@ function CommentsBody() {
         title="Comment options"
         rows={[
           {
-            key: 'delete',
-            icon: 'trash',
-            label: 'Delete comment',
+            key: "delete",
+            icon: "trash",
+            label: "Delete comment",
             destructive: true,
             onPress: () => {
               const node = menuNode;
@@ -311,19 +336,19 @@ export default function CommentsScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { flexGrow: 1, width: '100%', maxWidth: 600, alignSelf: 'center' },
+  content: { flexGrow: 1, width: "100%", maxWidth: 600, alignSelf: "center" },
   banner: { margin: Spacing.three },
   skeletonRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.three - Spacing.one,
     paddingVertical: Spacing.three - Spacing.one,
     paddingHorizontal: Spacing.three,
   },
   skeletonText: { flex: 1, gap: Spacing.two },
   footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.two,
     padding: Spacing.three,
   },
